@@ -585,10 +585,11 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
       <div class="eyebrow">Monthly Index</div>
       <div class="monthbar">
         <div class="monthbig" id="monthLabel"></div>
-        <div class="nav" style="margin-left:auto;display:flex;gap:4px">
+        <div class="nav" style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn ghost" id="prevMonth">◀</button>
           <button class="btn" id="thisMonth">今月</button>
           <button class="btn ghost" id="nextMonth">▶</button>
+          <button class="btn" id="workCsvBtn" title="この月の出社・退社データをCSVで書き出す（勤務表作成用）">勤務CSV ↓</button>
         </div>
       </div>
       <div class="mwork" id="monthWork"></div>
@@ -1158,6 +1159,7 @@ function extractLoc(text){
   if(/[0-9０-９]/.test(s))return ''; /* 数字入りは場所と扱わない */
   return s;
 }
+const minToT=m=>pad(Math.floor((m%1440)/60))+':'+pad(m%60);
 function workInfo(day){
   let s=null,e=null,sTxt='',eTxt='';
   (day.appts||[]).forEach(a=>{
@@ -1166,11 +1168,11 @@ function workInfo(day){
     if(WSTART.some(k=>a.text.indexOf(k)>=0)){if(s==null||m<s){s=m;sTxt=a.text;}}
     if(WEND.some(k=>a.text.indexOf(k)>=0)){if(e==null||m>e){e=m;eTxt=a.text;}}
   });
-  if(s==null||e==null)return {w:0,loc:''};
+  if(s==null||e==null)return {w:0,loc:'',st:'',et:''};
   let ee=e;
   if(ee<=s)ee+=1440;                 /* 日跨ぎ（夜勤）対応 */
   const w=Math.max(0,ee-s-60);       /* 昼休憩1Hを控除 */
-  return {w:w,loc:extractLoc(sTxt)||extractLoc(eTxt)};
+  return {w:w,loc:extractLoc(sTxt)||extractLoc(eTxt),st:minToT(s),et:minToT(e)};
 }
 function fmtH(min){
   return (Math.round(min/60*100)/100)+'H';
@@ -1732,6 +1734,29 @@ async function renderMonth(){
     : '';
   $('#monthWork').innerHTML=l1+((l1&&l2)?'<br>':'')+l2;
 }
+async function exportWorkCSV(){
+  const y=+S.month.slice(0,4),m=+S.month.slice(5,7);
+  const last=new Date(y,m,0).getDate();
+  const rows=[['date','weekday','start','end','location','work_h']];
+  for(let d=1;d<=last;d++){
+    const ds=y+'-'+pad(m)+'-'+pad(d);
+    const day=await getDay(ds);
+    const wi=workInfo(day);
+    if(wi.w<=0)continue;
+    rows.push([ds,WD[parseD(ds).getDay()],wi.st,wi.et,wi.loc||'在宅',String(Math.round(wi.w/60*100)/100)]);
+  }
+  if(rows.length===1){toast('この月に出社・退社の記録がありません');return;}
+  const csv='\uFEFF'+rows.map(r=>r.join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='kinmu_'+y+'-'+pad(m)+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast((rows.length-1)+'日分の勤務データを書き出しました');
+}
 
 /* ═══════════════ Ⅰ〜Ⅳ領域マトリクス ═══════════════ */
 function qitemHTML(it){
@@ -2109,6 +2134,7 @@ function bindStatic(){
   $('#prevMonth').addEventListener('click',()=>{shiftMonth(-1);});
   $('#nextMonth').addEventListener('click',()=>{shiftMonth(1);});
   $('#thisMonth').addEventListener('click',()=>{S.month=TODAY.slice(0,7);renderMonth();});
+  $('#workCsvBtn').addEventListener('click',exportWorkCSV);
   $('#mAddBtn').addEventListener('click',addMaster);
   $('#mAddText').addEventListener('keydown',e=>{if(e.key==='Enter')addMaster();});
   $('#missionArea').addEventListener('input',e=>{S.profile.mission=e.target.value;qsave(KEY.profile,S.profile);});
