@@ -129,6 +129,7 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
 .datebig .y{font-size:13px;color:var(--ink-soft);font-family:var(--sans);letter-spacing:.1em;display:block}
 .wdmark{font-family:var(--serif);font-size:20px}
 .wd-0{color:var(--red)}.wd-6{color:var(--blue)}
+.datebig .hol{display:inline-block;font-family:var(--sans);font-size:12px;font-weight:600;color:#f4efdd;background:var(--red);border-radius:999px;padding:1px 9px;margin-left:8px;letter-spacing:.08em;vertical-align:middle}
 .datebar .nav{display:flex;gap:4px;margin-left:auto;align-items:center}
 .datebar input[type=date]{border:1px solid #b9b09a;border-radius:8px;padding:5px 8px;background:#fffdf6;font-size:13px}
 .quote{font-family:var(--serif);color:var(--ink-soft);font-size:13.5px;margin:2px 0 20px}
@@ -216,6 +217,9 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
 /* ── 週間コンパス ───────────────────────── */
 .weekbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .weekbig{font-family:var(--serif);font-size:22px;font-weight:600}
+.weekhol{display:flex;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--red)}
+.weekhol span{border:1px solid var(--red);border-radius:999px;padding:0 7px;line-height:1.6;background:#fbeeea}
+.schchip .hol{color:var(--red);font-weight:600;margin-right:2px}
 .theme{display:flex;align-items:center;gap:10px;margin:6px 0 20px}
 .theme input{flex:1;border:none;border-bottom:1.5px solid var(--rule);background:transparent;padding:5px 2px;font-family:var(--serif);font-size:16px}
 .theme input:focus{border-bottom-color:var(--gilt)}
@@ -258,6 +262,9 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
 .workbadge:empty{display:none}
 .cal .sun .d,.wdh.sun{color:var(--red)}
 .cal .sat .d,.wdh.sat{color:var(--blue)}
+.cell.hol{background:#fbeeea}.cell.hol.out{background:#f5ebe6}.cell.hol .d{color:var(--red)}
+.chol{display:block;font-size:9.5px;color:var(--red);line-height:1.3;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.holnote{display:block;font-family:var(--sans);font-size:10.5px;font-weight:400;color:var(--ink-soft);letter-spacing:.06em}
 
 /* ── マスターリスト ─────────────────────── */
 .mrow{display:flex;align-items:center;gap:9px;border-bottom:1px dotted var(--rule);padding:7px 2px}
@@ -533,6 +540,7 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
       <div class="eyebrow">Weekly Compass</div>
       <div class="weekbar">
         <div class="weekbig" id="weekLabel"></div>
+        <div class="weekhol" id="weekHol"></div>
         <div class="nav" style="margin-left:auto;display:flex;gap:4px">
           <button class="btn ghost" id="prevWeek">◀</button>
           <button class="btn" id="thisWeek">今週</button>
@@ -704,6 +712,43 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const md=s=>{const d=parseD(s);return (d.getMonth()+1)+'/'+d.getDate();};
 const mdw=s=>{const d=parseD(s);return (d.getMonth()+1)+'月'+d.getDate()+'日（'+WD[d.getDay()]+'）';};
+/* ── 日本の祝日 ──
+   春分・秋分は官報告示の表のみ（計算式で推定しない）。表にない年は春分・秋分と
+   それに依存する振替休日・国民の休日を返さない。日付はローカル時刻で扱う。 */
+const JP_EQUINOX={2025:[20,23],2026:[20,23],2027:[21,23]};
+function jpHoliday(input){
+  const dt=input instanceof Date?input:parseD(String(input));
+  if(isNaN(dt))return null;
+  const nthMon=(y,m,n)=>1+((8-new Date(y,m-1,1).getDay())%7)+(n-1)*7;
+  const base=(y,m,d)=>{
+    const eq=JP_EQUINOX[y];
+    if(m===1&&d===1)return '元日';
+    if(m===1&&d===nthMon(y,1,2))return '成人の日';
+    if(m===2&&d===11)return '建国記念の日';
+    if(m===2&&d===23)return '天皇誕生日';
+    if(m===3&&eq&&d===eq[0])return '春分の日';
+    if(m===4&&d===29)return '昭和の日';
+    if(m===5&&d===3)return '憲法記念日';
+    if(m===5&&d===4)return 'みどりの日';
+    if(m===5&&d===5)return 'こどもの日';
+    if(m===7&&d===nthMon(y,7,3))return '海の日';
+    if(m===8&&d===11)return '山の日';
+    if(m===9&&d===nthMon(y,9,3))return '敬老の日';
+    if(m===9&&eq&&d===eq[1])return '秋分の日';
+    if(m===10&&d===nthMon(y,10,2))return 'スポーツの日';
+    if(m===11&&d===3)return '文化の日';
+    if(m===11&&d===23)return '勤労感謝の日';
+    return null;
+  };
+  const at=o=>{const x=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+o);return {h:base(x.getFullYear(),x.getMonth()+1,x.getDate()),sun:x.getDay()===0};};
+  const own=at(0).h;
+  if(own)return own;
+  /* 振替休日：直前に連続する祝日の中に日曜があれば、その後最初の「祝日でない日」 */
+  for(let o=-1;;o--){const p=at(o);if(!p.h)break;if(p.sun)return '振替休日';}
+  /* 国民の休日：前日と翌日がともに祝日 */
+  if(at(-1).h&&at(1).h)return '国民の休日';
+  return null;
+}
 
 const QUOTES=[
   ['失われた時間は、二度と戻らない。','B・フランクリン'],
@@ -1254,7 +1299,8 @@ function renderDaily(){
   $('#dateBig').innerHTML=
     '<span class="y">'+d.getFullYear()+'年</span>'+
     (d.getMonth()+1)+'月'+d.getDate()+'日'+
-    '<span class="wdmark wd-'+d.getDay()+'">（'+WD[d.getDay()]+'）</span>';
+    '<span class="wdmark wd-'+d.getDay()+'">（'+WD[d.getDay()]+'）</span>'+
+    (jpHoliday(d)?'<span class="hol">'+esc(jpHoliday(d))+'</span>':'');
   $('#datePick').value=S.date;
   const doy=Math.floor((d-new Date(d.getFullYear(),0,1))/86400000);
   const q=QUOTES[doy%QUOTES.length];
@@ -1551,6 +1597,9 @@ async function loadWeek(){
 function renderWeek(){
   const ws=S.weekStart,we=addDays(ws,6);
   $('#weekLabel').textContent=md(ws)+'（月）〜 '+md(we)+'（日）';
+  const whol=[];
+  for(let i=0;i<7;i++){const ds=addDays(ws,i);const h=jpHoliday(ds);if(h)whol.push('<span>'+md(ds)+'（'+WD[parseD(ds).getDay()]+'）'+esc(h)+'</span>');}
+  $('#weekHol').innerHTML=whol.join('');
   $('#weekTheme').value=S.week.theme||'';
   const grid=$('#compassGrid');
   let html='';
@@ -1563,7 +1612,7 @@ function renderWeek(){
         +'<span class="rockdot"></span>'
         +'<span class="rk">'+esc(rock.text)+'</span>'
         +(rock.sch
-          ?'<button class="schchip" data-act="jump" title="その日のページを開く">→ '+md(rock.sch)+'</button>'
+          ?'<button class="schchip" data-act="jump" title="その日のページを開く'+(jpHoliday(rock.sch)?'（'+esc(jpHoliday(rock.sch))+'）':'')+'">→ '+(jpHoliday(rock.sch)?'<span class="hol">祝</span>':'')+md(rock.sch)+'</button>'
           :'<input type="date" data-act="sch" value="" title="日付へ入れる" aria-label="日付へ入れる">')
         +'<button class="iconb" data-act="rmrock" title="削除">✕</button>'
         +'</div>').join('')
@@ -1655,7 +1704,7 @@ async function scheduleTaskTo(ds,task){
 /* ═══════════════ 月間 ═══════════════ */
 async function renderMonth(){
   const y=+S.month.slice(0,4),m=+S.month.slice(5,7);
-  $('#monthLabel').textContent=y+'年'+m+'月';
+  $('#monthLabel').innerHTML=y+'年'+m+'月'+((m===3||m===9)&&!JP_EQUINOX[y]?'<small class="holnote">春分・秋分は未登録</small>':'');
   const first=fmt(new Date(y,m-1,1));
   const start=mondayOf(first);
   /* 旧形式インデックス（勤務時間なし）を自動補完 */
@@ -1683,7 +1732,9 @@ async function renderMonth(){
     if(ds===S.date)cls.push('sel');
     if(d.getDay()===0)cls.push('sun');
     if(d.getDay()===6)cls.push('sat');
-    let badge='';
+    const hol=jpHoliday(d);
+    if(hol)cls.push('hol');
+    let badge=hol?'<span class="chol" title="'+esc(hol)+'">'+esc(hol)+'</span>':'';
     if(ix&&ix.w>0)badge+='<span class="cbadge wh'+(ix.loc?' office':'')+'" title="'+(ix.loc?esc(ix.loc)+'出社':'在宅勤務')+'">'+(ix.loc?esc(ix.loc)+' ':'')+fmtH(ix.w)+'</span>';
     if(ix&&(ix.t||ix.a)){
       badge+='<span class="cbadge">'
