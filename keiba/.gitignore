@@ -1,0 +1,6 @@
+# データは git に入れない（Google Drive 経由で受け渡し）
+data/
+*.csv
+*.zip
+*.parquet
+!results/*.csv
