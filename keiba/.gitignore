@@ -4,3 +4,4 @@ data/
 *.zip
 *.parquet
 !results/*.csv
+__pycache__/
