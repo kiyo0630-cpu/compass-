@@ -116,8 +116,9 @@ def adjusted_last3f(df):
     return pd.Series(eff['horse'] + resid, index=d.index, name='adj_last3f')
 
 # ---------- Elo 型レーティング（日付順、レース前の値を使う） ----------
-def elo_ratings(df, k_new=40.0, k_old=20.0, n_switch=6, scale=400.0):
-    d = df[df['ran'] & df['血統登録番号'].notna()][['race_key', 'date', '血統登録番号', '確定着順']]
+def elo_ratings(df, k_new=40.0, k_old=20.0, n_switch=6, scale=400.0, margin_col='adj_time', sigma=1.0):
+    """着差つき Elo。S_ij はタイム差のシグモイド（sigma 秒で 0.73）。タイムが無い馬同士は着順で 0/1。"""
+    d = df[df['ran'] & df['血統登録番号'].notna()][['race_key', 'date', '血統登録番号', '確定着順', margin_col]]
     horses, hidx = np.unique(d['血統登録番号'].values, return_inverse=True)
     rating = np.full(len(horses), 1500.0); games = np.zeros(len(horses), dtype=int)
     pre = np.empty(len(d)); pre_games = np.empty(len(d), dtype=int)
@@ -125,16 +126,21 @@ def elo_ratings(df, k_new=40.0, k_old=20.0, n_switch=6, scale=400.0):
     codes, starts = pd.factorize(d['race_key'].values)[0], None
     order = np.argsort(codes, kind='stable')  # d は日付順なのでレース順も日付順
     bounds = np.r_[0, np.flatnonzero(np.diff(codes[order])) + 1, len(order)]
-    fin = d['確定着順'].values
+    fin = d['確定着順'].values; mg = d[margin_col].values
     for b in range(len(bounds) - 1):
         idx = order[bounds[b]:bounds[b + 1]]
-        h = hidx[idx]; r = rating[h]; f = fin[idx]
+        h = hidx[idx]; r = rating[h]; f = fin[idx]; t = mg[idx]
         pre[idx] = r; pre_games[idx] = games[h]
         n = len(idx)
         if n < 2: continue
         diff = (r[None, :] - r[:, None]) / scale
         E = 1.0 / (1.0 + 10.0 ** diff)            # i が j に勝つ期待
         S = (f[:, None] < f[None, :]).astype(float) + 0.5 * (f[:, None] == f[None, :])
+        ok = ~np.isnan(t)
+        if ok.sum() >= 2:
+            Sm = 1.0 / (1.0 + np.exp(-(t[None, :] - t[:, None]) / sigma))   # i が速いほど 1 に近い
+            both = ok[:, None] & ok[None, :]
+            S = np.where(both, Sm, S)
         np.fill_diagonal(S, 0); np.fill_diagonal(E, 0)
         K = np.where(games[h] < n_switch, k_new, k_old) / (n - 1)
         rating[h] = r + K * (S - E).sum(axis=1)
@@ -175,6 +181,15 @@ def horse_history(df):
     d['interval_w'] = d['間隔']
     # ペース × 位置取り（前走）: ハイペース(PCI 低)で前にいた / スロー(PCI 高)で後ろにいた ほど「不利」= 正
     d['prev_pace_pos'] = -((d['prev_pci'] - 50) / 5.0) * (0.5 - d['prev_pos_pct'])
+    # 展開区分ダミー: 前走ペース（PCI 46 未満=ハイ, 52 超=スロー）× 前走位置（0.3 未満=前, 0.7 超=後）
+    hi = d['prev_pci'] < 46; slow = d['prev_pci'] > 52
+    front = d['prev_pos_pct'] < 0.3; back = d['prev_pos_pct'] > 0.7
+    d['dev_hi_front'] = (hi & front).astype(float)     # ハイペースを先行 → 不利（巻き返し候補）
+    d['dev_hi_back'] = (hi & back).astype(float)       # ハイペースを後方 → 有利（展開に恵まれた）
+    d['dev_slow_front'] = (slow & front).astype(float) # スローを先行 → 有利
+    d['dev_slow_back'] = (slow & back).astype(float)   # スローを後方 → 不利
+    d['layoff'] = (d['間隔'] >= 10).astype(float)       # 休み明け（10 週以上）
+    d['debut'] = (d['n_prior'] == 0).astype(float)
     return d
 
 def race_context(d):
