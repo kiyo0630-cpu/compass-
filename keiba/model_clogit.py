@@ -135,7 +135,7 @@ def main():
     y = df['win'].values.astype(float); y3 = df['top3'].values.astype(float)
     cols_f = [c for c in X.columns if c != 'lpm']
     print(f'出走 {len(df):,}  レース {df["race_key"].nunique():,}  特徴量 {len(cols_f)}')
-    rows, coef_rows, bets, place_rows = [], [], [], []
+    rows, coef_rows, bets, place_rows, preds = [], [], [], [], []
     for ty in range(2020, 2027):
         tr = (df['year'] < ty).values; te = (df['year'] == ty).values
         ctr, nRtr = race_codes(df.loc[tr, 'race_key']); cte, nRte = race_codes(df.loc[te, 'race_key'])
@@ -145,8 +145,13 @@ def main():
             w, se = fit_clogit(X.loc[tr, cols].values, y[tr], ctr, nRtr)
             ll, p = ll_clogit(X.loc[te, cols].values, w, y[te], cte, nRte)
             rows.append(dict(year=ty, model=name, races=nRte, LL_per_race=ll / nRte, pseudoR2=1 - ll / ll0))
+            if name == 'A 市場のみ':
+                pA = p
             if name == 'B 市場+特徴量':
                 pB = p
+                keep = df.loc[te, ['race_key', 'date', 'year', '場所', 'クラスコード', '芝・ダ', '距離', '頭数', '馬番', '人気順', '単勝オッズ', 'pm', 'win', 'top3']].copy()
+                keep['pA'] = pA; keep['pB'] = p
+                preds.append(keep)
                 for c, wv, sv in zip(cols, w, se):
                     coef_rows.append(dict(year=ty, feature=c, coef=wv, se=sv, t=wv / sv))
                 d = df.loc[te, ['race_key', 'win', '単勝オッズ']].copy(); d['p'] = p; d['ev'] = d['p'] * d['単勝オッズ']
@@ -174,6 +179,7 @@ def main():
         p3_from_win = harville_place3(pB, cte, nRte, lam)
         ll_w = float(np.sum(y3[te] * np.log(p3_from_win) + (1 - y3[te]) * np.log(1 - p3_from_win)))
         n3 = te.sum()
+        preds[-1]['p3_market'] = ph_te; preds[-1]['p3_B'] = p3
         place_rows.append(dict(year=ty, lam=lam, LL_harville_raw=ll_h / n3, LL_A_market_logit=llA / n3, LL_B_market_feats=llB / n3,
                                LL_from_win_modelB=ll_w / n3, dLL_B_minus_A_per_horse=(llB - llA) / n3,
                                coef_market=wB[1], top3_rate=y3[te].mean()))
@@ -198,6 +204,7 @@ def main():
     coef.to_csv(os.path.join(RESULTS, 'clogit_coefs.csv'), index=False)
     pl.to_csv(os.path.join(RESULTS, 'place_results.csv'), index=False)
     b.to_csv(os.path.join(RESULTS, 'win_ev_bets.csv'), index=False)
+    pd.concat(preds).to_csv(os.path.join(DATA, 'predictions_test.csv'), index=False)
 
 if __name__ == '__main__':
     main()
