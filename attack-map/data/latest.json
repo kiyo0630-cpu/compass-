@@ -3,127 +3,127 @@
  "provider": "cloudflare-radar",
  "target": "JP",
  "dateRange": "1d",
- "generatedAt": "2026-10-10T15:42:52.198Z",
+ "generatedAt": "2026-10-10T20:04:44.002Z",
  "note": "日本を標的（宛先）とする攻撃の送信元国シェア（%）。IP の地理情報に基づく。",
  "l7": [
   {
    "code": "US",
    "name": "United States",
-   "share": 20.894704,
+   "share": 20.992111,
    "rank": 1
   },
   {
    "code": "CN",
    "name": "China",
-   "share": 9.022468,
+   "share": 9.442389,
    "rank": 2
   },
   {
    "code": "NL",
    "name": "Netherlands",
-   "share": 6.435027,
+   "share": 6.354938,
    "rank": 3
   },
   {
    "code": "SG",
    "name": "Singapore",
-   "share": 5.330044,
+   "share": 5.407279,
    "rank": 4
   },
   {
    "code": "ID",
    "name": "Indonesia",
-   "share": 4.432016,
+   "share": 4.393138,
    "rank": 5
   },
   {
    "code": "IN",
    "name": "India",
-   "share": 4.081064,
+   "share": 4.05679,
    "rank": 6
   },
   {
    "code": "DE",
    "name": "Germany",
-   "share": 3.960204,
+   "share": 3.893243,
    "rank": 7
-  },
-  {
-   "code": "KR",
-   "name": "Korea, South",
-   "share": 2.88617,
-   "rank": 8
   },
   {
    "code": "BR",
    "name": "Brazil",
-   "share": 2.834157,
-   "rank": 9
+   "share": 2.89068,
+   "rank": 8
   },
   {
    "code": "FR",
    "name": "France",
-   "share": 2.784356,
+   "share": 2.776342,
+   "rank": 9
+  },
+  {
+   "code": "KR",
+   "name": "Korea, South",
+   "share": 2.7698,
    "rank": 10
   },
   {
    "code": "HK",
    "name": "Hong Kong",
-   "share": 2.280364,
+   "share": 2.147754,
    "rank": 11
   },
   {
    "code": "VN",
    "name": "Vietnam",
-   "share": 2.082721,
+   "share": 1.971171,
    "rank": 12
   },
   {
    "code": "JP",
    "name": "Japan",
-   "share": 1.98926,
+   "share": 1.893256,
    "rank": 13
   },
   {
    "code": "RU",
    "name": "Russian Federation",
-   "share": 1.709891,
+   "share": 1.669475,
    "rank": 14
   },
   {
    "code": "TR",
    "name": "Turkey",
-   "share": 1.560214,
+   "share": 1.569452,
    "rank": 15
-  },
-  {
-   "code": "MX",
-   "name": "Mexico",
-   "share": 1.555684,
-   "rank": 16
   },
   {
    "code": "GB",
    "name": "United Kingdom",
-   "share": 1.500941,
+   "share": 1.524048,
+   "rank": 16
+  },
+  {
+   "code": "MX",
+   "name": "Mexico",
+   "share": 1.4114,
    "rank": 17
   },
   {
    "code": "AU",
    "name": "Australia",
-   "share": 1.468671,
+   "share": 1.385287,
    "rank": 18
   },
   {
    "code": "PK",
    "name": "Pakistan",
-   "share": 1.152752,
+   "share": 1.158379,
    "rank": 19
   },
   {
    "code": "CA",
    "name": "Canada",
-   "share": 1.087747,
+   "share": 1.098719,
    "rank": 20
   }
  ],
@@ -131,102 +131,90 @@
   {
    "code": "RU",
    "name": "Russian Federation",
-   "share": 99.622304,
+   "share": 81.373574,
    "rank": 1
   },
   {
    "code": "NL",
    "name": "Netherlands",
-   "share": 0.168977,
+   "share": 7.527706,
    "rank": 2
   },
   {
    "code": "BG",
    "name": "Bulgaria",
-   "share": 0.112547,
+   "share": 5.736391,
    "rank": 3
   },
   {
    "code": "US",
    "name": "United States",
-   "share": 0.031605,
+   "share": 2.527822,
    "rank": 4
   },
   {
    "code": "HK",
    "name": "Hong Kong",
-   "share": 0.020861,
+   "share": 0.929346,
    "rank": 5
   },
   {
    "code": "BD",
    "name": "Bangladesh",
-   "share": 0.016168,
+   "share": 0.734184,
    "rank": 6
   },
   {
    "code": "CA",
    "name": "Canada",
-   "share": 0.009388,
+   "share": 0.418206,
    "rank": 7
-  },
-  {
-   "code": "AT",
-   "name": "Austria",
-   "share": 0.004694,
-   "rank": 8
   },
   {
    "code": "DE",
    "name": "Germany",
-   "share": 0.004172,
+   "share": 0.185869,
+   "rank": 8
+  },
+  {
+   "code": "PH",
+   "name": "Philippines",
+   "share": 0.139402,
    "rank": 9
   },
   {
    "code": "PK",
    "name": "Pakistan",
-   "share": 0.002712,
+   "share": 0.120815,
    "rank": 10
   },
   {
    "code": "IN",
    "name": "India",
-   "share": 0.002399,
+   "share": 0.106875,
    "rank": 11
   },
   {
    "code": "ZA",
    "name": "South Africa",
-   "share": 0.002086,
+   "share": 0.092935,
    "rank": 12
+  },
+  {
+   "code": "MX",
+   "name": "Mexico",
+   "share": 0.060408,
+   "rank": 13
   },
   {
    "code": "ID",
    "name": "Indonesia",
-   "share": 0.002086,
-   "rank": 13
+   "share": 0.046467,
+   "rank": 14
   }
  ],
  "series": {
   "timestamps": [
-   "2026-10-09T15:30:00Z",
-   "2026-10-09T15:45:00Z",
-   "2026-10-09T16:00:00Z",
-   "2026-10-09T16:15:00Z",
-   "2026-10-09T16:30:00Z",
-   "2026-10-09T16:45:00Z",
-   "2026-10-09T17:00:00Z",
-   "2026-10-09T17:15:00Z",
-   "2026-10-09T17:30:00Z",
-   "2026-10-09T17:45:00Z",
-   "2026-10-09T18:00:00Z",
-   "2026-10-09T18:15:00Z",
-   "2026-10-09T18:30:00Z",
-   "2026-10-09T18:45:00Z",
-   "2026-10-09T19:00:00Z",
-   "2026-10-09T19:15:00Z",
-   "2026-10-09T19:30:00Z",
-   "2026-10-09T19:45:00Z",
    "2026-10-09T20:00:00Z",
    "2026-10-09T20:15:00Z",
    "2026-10-09T20:30:00Z",
@@ -297,27 +285,29 @@
    "2026-10-10T12:45:00Z",
    "2026-10-10T13:00:00Z",
    "2026-10-10T13:15:00Z",
-   "2026-10-10T13:30:00Z"
+   "2026-10-10T13:30:00Z",
+   "2026-10-10T13:45:00Z",
+   "2026-10-10T14:00:00Z",
+   "2026-10-10T14:15:00Z",
+   "2026-10-10T14:30:00Z",
+   "2026-10-10T14:45:00Z",
+   "2026-10-10T15:00:00Z",
+   "2026-10-10T15:15:00Z",
+   "2026-10-10T15:30:00Z",
+   "2026-10-10T15:45:00Z",
+   "2026-10-10T16:00:00Z",
+   "2026-10-10T16:15:00Z",
+   "2026-10-10T16:30:00Z",
+   "2026-10-10T16:45:00Z",
+   "2026-10-10T17:00:00Z",
+   "2026-10-10T17:15:00Z",
+   "2026-10-10T17:30:00Z",
+   "2026-10-10T17:45:00Z",
+   "2026-10-10T18:00:00Z",
+   "2026-10-10T18:15:00Z",
+   "2026-10-10T18:30:00Z"
   ],
   "values": [
-   0.72774,
-   0.667366,
-   0.676994,
-   0.780223,
-   0.755321,
-   0.710656,
-   0.624511,
-   0.662299,
-   0.712248,
-   0.671927,
-   0.740698,
-   0.761546,
-   0.745476,
-   0.697264,
-   0.736861,
-   0.72593,
-   0.761691,
-   0.729405,
    0.712176,
    0.715796,
    1,
@@ -388,20 +378,40 @@
    0.413856,
    0.506588,
    0.446576,
-   0.487404
+   0.487404,
+   0.4903,
+   0.520631,
+   0.420877,
+   0.404083,
+   0.432822,
+   0.493195,
+   0.452946,
+   0.499276,
+   0.59874,
+   0.563269,
+   0.538656,
+   0.51998,
+   0.618503,
+   0.558781,
+   0.605328,
+   0.561894,
+   0.570653,
+   0.535616,
+   0.543289,
+   0.525119
   ]
  },
  "meta": {
   "l7": {
    "dateRange": [
     {
-     "startTime": "2026-10-09T15:00:00Z",
-     "endTime": "2026-10-10T15:00:00Z"
+     "startTime": "2026-10-09T20:00:00Z",
+     "endTime": "2026-10-10T20:00:00Z"
     }
    ],
    "confidenceInfo": null,
    "normalization": "PERCENTAGE",
-   "lastUpdated": "2026-10-10T13:30:00Z",
+   "lastUpdated": "2026-10-10T18:30:00Z",
    "units": [
     {
      "name": "*",
@@ -412,13 +422,13 @@
   "l3": {
    "dateRange": [
     {
-     "startTime": "2026-10-09T15:00:00Z",
-     "endTime": "2026-10-10T15:00:00Z"
+     "startTime": "2026-10-09T20:00:00Z",
+     "endTime": "2026-10-10T20:00:00Z"
     }
    ],
    "confidenceInfo": null,
    "normalization": "PERCENTAGE",
-   "lastUpdated": "2026-10-10T14:15:00Z",
+   "lastUpdated": "2026-10-10T18:15:00Z",
    "units": [
     {
      "name": "*",
