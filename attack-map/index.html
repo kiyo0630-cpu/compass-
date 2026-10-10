@@ -111,6 +111,21 @@ table.rank .trend.down{color:#9fe3bf}
 #spark{display:block;width:100%;height:84px;margin:4px 0 0}
 .sparkwrap{position:relative;padding:0 10px 10px}
 .sparktip{position:absolute;display:none;top:6px;right:14px;font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:#0b1120dd;border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.victim{padding:8px 14px 12px;font-size:12.5px}
+.victim h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:8px 0 4px}
+.victim .row{display:grid;grid-template-columns:minmax(0,1fr) 90px 52px;gap:8px;align-items:center;padding:3px 0}
+.victim .row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.victim .row .nm.mono{font-family:var(--mono);font-size:12px}
+.victim .row .bw{height:6px;background:#0b1120;border-radius:3px;overflow:hidden}
+.victim .row .bw i{display:block;height:100%;background:var(--l7);border-radius:3px}
+.victim .row .bw i.ver{background:var(--scan)}
+.victim .row .bw i.host{background:var(--l3)}
+.victim .nm .en{color:var(--muted);font-size:10.5px;margin-left:4px}
+.victim h3 small{font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)}
+.victim .row .v{font-family:var(--mono);text-align:right;color:var(--text-2)}
+.victim .note{color:var(--muted);font-size:11.5px;line-height:1.6;margin-top:6px}
+.victim .note code{font-family:var(--mono);font-size:11px;background:#0b1120;padding:1px 5px;border-radius:4px}
+.victim .empty{color:var(--text-2);font-size:12px;line-height:1.7}
 ul.feed{list-style:none;padding:6px 8px 10px;font-family:var(--mono);font-size:12px;max-height:290px;overflow:auto}
 ul.feed li{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:6px;animation:fade .3s ease}
 ul.feed li:nth-child(odd){background:#0f172a80}
@@ -205,6 +220,11 @@ footer li{margin:2px 0}
       </div>
     </div>
 
+    <div class="card" id="victimCard">
+      <h2>攻撃を受けている側 <small>日本・標的の内訳</small></h2>
+      <div class="victim" id="victimBody"></div>
+    </div>
+
     <div class="card">
       <h2>ライブフィード <small>国別シェアに基づく表示</small></h2>
       <ul class="feed" id="feed" aria-live="off"></ul>
@@ -236,7 +256,7 @@ footer li{margin:2px 0}
     </label>
     <label>カスタム JSON URL
       <input id="sCustom" type="url" placeholder="https://example.com/feed.json">
-      <span class="help">形式: {"countries":[{"code":"US","share":31.2}]} または {"l7":[…],"l3":[…]}</span>
+      <span class="help">形式: {"countries":[{"code":"US","share":31.2}]} または {"l7":[…],"l3":[…],"targets":[{"host":"www.example.jp","count":120}]}</span>
     </label>
     <label>集計期間（Radar）
       <select id="sRange">
@@ -272,6 +292,7 @@ footer li{margin:2px 0}
   <ul>
     <li><b>何を見ているか:</b> 「日本を標的（宛先）とする攻撃」の<b>送信元 国・地域の構成比</b>です。国別シェアは Cloudflare Radar（L7 HTTP DDoS と L3/4 DDoS の上位送信元）などから取得し、地図の矢印とフィードはそのシェアに比例してランダム生成しています。1 本の矢印が 1 件の実際の攻撃を表すわけではありません。</li>
     <li><b>「国」の意味:</b> 送信元 IP アドレスの地理情報です。多くはボットネットに乗っ取られた機器やレンタルサーバーからの通信で、その国の政府や国民が攻撃者という意味ではありません。攻撃者は踏み台を使うため、本当の発信地は分かりません。</li>
+    <li><b>攻撃を受けている側:</b> 被害を受けた個別の IP アドレスやドメインは公開されません（被害者側が公表しないため）。公開データで分かるのは「日本のどの業種・分野が狙われているか」までです。自分が管理するドメインへの攻撃は、Cloudflare のゾーン分析やサーバーのログから集計して表示できます。</li>
     <li><b>リアルタイム性:</b> ライブデータの最短集計単位は直近 1 時間で、ページの更新間隔と GitHub Actions のスケジュール（既定で毎時）に依存します。「デモ」表示は NICTER 観測レポートなど公開統計の<b>傾向を参考にした概算の参考値</b>で、実測値ではありません。</li>
   </ul>
   <h3>参考資料</h3>
@@ -341,12 +362,40 @@ const DEMO_PORTS = {
   l3:['UDP flood','SYN flood','DNS amp','NTP amp','ACK flood','SSDP amp','ICMP flood']
 };
 const TYPE_LABEL = {scan:'スキャン', brute:'認証攻撃', l7:'HTTP DDoS', l3:'L3/4 DDoS'};
+/* デモ用の業種・分野（参考値）。公開されている DDoS 脅威レポートの傾向を参考にした概算で実測値ではない */
+const DEMO_INDUSTRIES = [['Gaming',27],['Finance',14],['Internet',12],['Telecommunications',9],['Government',7],['Retail',6],['Media',5],['Education',4],['Cryptocurrency',4],['Software',3],['Healthcare',2]];
+const DEMO_VERTICALS = [['Gambling & Gaming',29],['Financial Services',15],['Internet & Telecom',14],['Information Technology & Services',10],['Government & Public Sector',8],['Retail & E-commerce',7],['Media & Entertainment',5],['Education',4]];
+/* Cloudflare Radar が返す英語の業種・分野名 → 日本語。無い場合は英語のまま表示 */
+const INDUSTRY_JA = {
+  'gaming':'ゲーム','gambling':'ギャンブル','gambling & gaming':'ギャンブル・ゲーム','internet':'インターネット','internet & telecom':'インターネット・通信',
+  'telecommunications':'通信','finance':'金融','financial services':'金融サービス','banking':'銀行','insurance':'保険','cryptocurrency':'暗号資産',
+  'government':'政府','government & public sector':'政府・公共','public sector':'公共','military':'軍事','education':'教育','higher education':'高等教育',
+  'retail':'小売','e-commerce':'EC','retail & e-commerce':'小売・EC','media':'メディア','entertainment':'エンターテインメント','media & entertainment':'メディア・エンタメ',
+  'news':'ニュース','software':'ソフトウェア','computer software':'ソフトウェア','information technology and services':'IT・サービス','information technology & services':'IT・サービス',
+  'it services':'IT サービス','hosting':'ホスティング','web hosting':'ホスティング','cloud':'クラウド','healthcare':'医療','health & medicine':'医療・健康','pharmaceuticals':'製薬',
+  'transportation':'運輸','travel & tourism':'旅行・観光','airlines':'航空','logistics':'物流','manufacturing':'製造','automotive':'自動車','energy':'エネルギー','utilities':'公益事業',
+  'business services':'ビジネスサービス','marketing & advertising':'マーケティング・広告','advertising':'広告','consulting':'コンサルティング','legal':'法務','real estate':'不動産',
+  'nonprofit':'非営利','non-profit':'非営利','religion':'宗教','sports':'スポーツ','food & beverage':'食品・飲料','agriculture':'農業','construction':'建設',
+  'consumer services':'消費者サービス','consumer electronics':'家電','electronics':'電子機器','adult':'アダルト','dating':'出会い系','social media':'SNS','social networks':'SNS',
+  'search engines':'検索エンジン','cybersecurity':'セキュリティ','computer & network security':'セキュリティ','other':'その他','unknown':'不明'
+};
+function industryJa(name){
+  const k = String(name || '').trim().toLowerCase();
+  if (INDUSTRY_JA[k]) return INDUSTRY_JA[k];
+  const rules = [[/gam(bl|e)/,'ゲーム・ギャンブル'],[/financ|bank|insur|fintech/,'金融'],[/crypto/,'暗号資産'],[/telecom/,'通信'],[/internet|isp/,'インターネット'],[/government|public/,'政府・公共'],
+    [/educat|school|universit/,'教育'],[/retail|commerce|shopping/,'小売・EC'],[/media|entertain|news|broadcast/,'メディア・エンタメ'],[/software|it |information technology|saas|technolog/,'IT・ソフトウェア'],
+    [/health|medic|pharma|hospital/,'医療'],[/travel|tour|airline|hotel/,'旅行・観光'],[/transport|logist/,'運輸・物流'],[/manufactur|industr|automotive/,'製造'],[/energy|utilit|oil|gas/,'エネルギー'],
+    [/host|cloud|data ?center/,'ホスティング・クラウド'],[/market|advertis/,'マーケティング・広告'],[/business|consult|professional/,'ビジネスサービス'],[/real estate/,'不動産'],[/sport/,'スポーツ'],[/adult|dating/,'アダルト・出会い系'],[/secur/,'セキュリティ']];
+  for (const [re, ja] of rules) if (re.test(k)) return ja;
+  return null;
+}
 
 const LON0 = 150, LAT_MIN = -58, LAT_MAX = 84;
 const JP_LL = [COUNTRIES.JP[2], COUNTRIES.JP[1]];
 const SETTINGS_KEY = 'attackmap.settings.v1';
 const TREND_KEY = 'attackmap.prev.v1';
 const FILE_URL = './data/latest.json';
+const TARGETS_URL = './data/targets.json';
 const FILE_FRESH_HOURS = 3;
 
 const $ = (s) => document.querySelector(s);
@@ -409,10 +458,25 @@ function normList(list){
   items.sort((a, b) => b.share - a.share);
   return items;
 }
+function normNamed(list){
+  if (!Array.isArray(list)) return null;
+  const items = list.map(x => ({name: String(x.name || ''), share: num(x.share ?? x.value), count: num(x.count)})).filter(x => x.name);
+  if (!items.length) return null;
+  if (!items.some(x => x.share)){ const tc = items.reduce((s, x) => s + (x.count || 0), 0); items.forEach(x => { x.share = tc ? (x.count || 0) / tc * 100 : 0; }); }
+  else items.forEach(x => { x.share = x.share || 0; });
+  return items.sort((a, b) => b.share - a.share);
+}
+function normTargets(list){
+  if (!Array.isArray(list)) return null;
+  const items = list.map(x => ({host: String(x.host || x.domain || x.ip || x.address || ''), count: num(x.count) || 0, type: x.type || null})).filter(x => x.host);
+  return items.length ? items.sort((a, b) => b.count - a.count) : null;
+}
 function normalizeSnapshot(raw, label){
   if (!raw || typeof raw !== 'object') throw new Error('JSON が空か、オブジェクトではありません');
   const base = {label, kind:'live', generatedAt: raw.generatedAt ? new Date(raw.generatedAt) : (raw.updated ? new Date(raw.updated) : null),
-    dateRange: raw.dateRange || null, series: raw.series || null, errors: Array.isArray(raw.errors) ? raw.errors : [], provider: raw.provider || null};
+    dateRange: raw.dateRange || null, series: raw.series || null, errors: Array.isArray(raw.errors) ? raw.errors : [], provider: raw.provider || null,
+    industries: normNamed(raw.industries), verticals: normNamed(raw.verticals),
+    industriesL3: normNamed(raw.industriesL3), verticalsL3: normNamed(raw.verticalsL3), targets: normTargets(raw.targets)};
   if (Array.isArray(raw.l7) || Array.isArray(raw.l3)){
     const l7 = normList(raw.l7), l3 = normList(raw.l3);
     if (!l7 && !l3) throw new Error('l7 / l3 に有効な国データがありません');
@@ -424,7 +488,8 @@ function normalizeSnapshot(raw, label){
 }
 function demoSnapshot(){
   const l7 = normList(Object.entries(DEMO_WEIGHTS).map(([code, share]) => ({code, share})));
-  return {label:'デモ（公開統計の傾向を参考にした参考値）', kind:'demo', generatedAt:null, dateRange:null, l7, l3:null, series:null, errors:[], provider:'demo'};
+  return {label:'デモ（公開統計の傾向を参考にした参考値）', kind:'demo', generatedAt:null, dateRange:null, l7, l3:null, series:null, errors:[], provider:'demo',
+    industries: normNamed(DEMO_INDUSTRIES.map(([name, share]) => ({name, share}))), verticals: normNamed(DEMO_VERTICALS.map(([name, share]) => ({name, share}))), targets:null};
 }
 
 /* Cloudflare Radar API のレスポンスから上位国配列・時系列を取り出す（キー名の違いに耐える） */
@@ -434,6 +499,11 @@ function pickTop(resp){
     const v = r[k];
     if (Array.isArray(v) && v.length && typeof v[0] === 'object' && Object.keys(v[0]).some(key => /CountryAlpha2$/i.test(key))) return v;
   }
+  return null;
+}
+function pickNamed(resp){
+  const r = (resp && resp.result) || {};
+  for (const k of Object.keys(r)){ const v = r[k]; if (Array.isArray(v) && v.length && v[0] && 'name' in v[0] && 'value' in v[0]) return v; }
   return null;
 }
 function pickSeries(resp){
@@ -448,12 +518,16 @@ async function loadCloudflareDirect(token, range){
   const base = 'https://api.cloudflare.com/client/v4/radar/attacks';
   const opts = {headers:{Authorization:`Bearer ${token}`}};
   const q = `?location=JP&dateRange=${encodeURIComponent(range)}&limit=20`;
-  const [l7, l3, ts] = await Promise.allSettled([
+  const [l7, l3, ts, ind, ver, ind3, ver3] = await Promise.allSettled([
     fetchJSON(`${base}/layer7/top/locations/origin${q}`, opts),
     fetchJSON(`${base}/layer3/top/locations/origin${q}`, opts),
-    fetchJSON(`${base}/layer7/timeseries?location=JP&dateRange=${encodeURIComponent(range)}`, opts)
+    fetchJSON(`${base}/layer7/timeseries?location=JP&dateRange=${encodeURIComponent(range)}`, opts),
+    fetchJSON(`${base}/layer7/top/industry${q}`, opts),
+    fetchJSON(`${base}/layer7/top/vertical${q}`, opts),
+    fetchJSON(`${base}/layer3/top/industry${q}`, opts),
+    fetchJSON(`${base}/layer3/top/vertical${q}`, opts)
   ]);
-  const errors = [l7, l3, ts].filter(p => p.status === 'rejected').map(p => String(p.reason && p.reason.message || p.reason));
+  const errors = [l7, l3, ts, ind, ver, ind3, ver3].filter(p => p.status === 'rejected').map(p => String(p.reason && p.reason.message || p.reason));
   if (l7.status === 'rejected' && l3.status === 'rejected'){
     const m = errors.join(' / ');
     if (/Failed to fetch|NetworkError|Load failed/i.test(m)) throw new Error('Cloudflare API にブラウザから直接アクセスできませんでした（CORS 制限の可能性）。Worker プロキシか GitHub Actions を使ってください。');
@@ -463,7 +537,10 @@ async function loadCloudflareDirect(token, range){
     generatedAt: new Date().toISOString(), dateRange: range, provider:'cloudflare-radar',
     l7: l7.status === 'fulfilled' ? pickTop(l7.value) : null,
     l3: l3.status === 'fulfilled' ? pickTop(l3.value) : null,
-    series: ts.status === 'fulfilled' ? pickSeries(ts.value) : null, errors
+    series: ts.status === 'fulfilled' ? pickSeries(ts.value) : null,
+    industries: ind.status === 'fulfilled' ? pickNamed(ind.value) : null, verticals: ver.status === 'fulfilled' ? pickNamed(ver.value) : null,
+    industriesL3: ind3.status === 'fulfilled' ? pickNamed(ind3.value) : null, verticalsL3: ver3.status === 'fulfilled' ? pickNamed(ver3.value) : null,
+    errors
   }, 'Cloudflare Radar（直接）');
 }
 async function loadProxy(url, range){
@@ -497,6 +574,18 @@ async function loadSnapshot(){
   }
   if (!snap){ snap = demoSnapshot(); snap.fallback = true; }
   snap.tried = tried;
+  // 自分の Cloudflare ゾーンの集計（任意機能）。ある場合だけ使う
+  if (!snap.targets && (s.mode === 'auto' || s.mode === 'file')){
+    try {
+      const t = await fetchJSON(`${TARGETS_URL}?t=${Date.now()}`);
+      snap.targets = normTargets(t.targets); snap.targetsMeta = {generatedAt: t.generatedAt ? new Date(t.generatedAt) : null, windowHours: t.windowHours || null, provider: t.provider || null};
+      // 国別シェアが取れていない（デモ）なら、自ゾーンの送信元国を使う
+      if (snap.kind === 'demo' && Array.isArray(t.countries) && t.countries.length){
+        const l = normList(t.countries);
+        if (l){ Object.assign(snap, {kind:'live', label:'自分の Cloudflare ゾーンの FW イベント', provider:'cloudflare-zone-firewall', fallback:false, generatedAt: snap.targetsMeta.generatedAt, l7: l, l3: null, dateRange: t.windowHours ? `${t.windowHours}h` : null}); }
+      }
+    } catch (e){ /* 無ければ何もしない */ }
+  }
   return snap;
 }
 
@@ -783,6 +872,34 @@ function renderStatus(){
   msg.textContent = lines.join('\n');
   msg.className = 'msg' + (snap.fallback ? ' err' : '');
 }
+function renderVictims(){
+  const snap = state.snapshot, el = $('#victimBody');
+  if (!snap){ el.innerHTML = ''; return; }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const label = (name) => { const ja = industryJa(name); return ja ? `${esc(ja)} <span class="en">${esc(name)}</span>` : esc(name); };
+  const rows = (list, max, kind) => list.slice(0, 10).map(x => {
+    const w = Math.max(2, (x.share != null ? x.share / max : x.count / max) * 100);
+    const nm = kind === 'host' ? `<span class="nm mono" title="${esc(x.host)}">${esc(x.host)}</span>` : `<span class="nm" title="${esc(x.name)}">${label(x.name)}</span>`;
+    return `<div class="row">${nm}<span class="bw"><i class="${kind}" style="width:${w}%"></i></span><span class="v">${x.share != null ? fmtPct(x.share) + '%' : x.count.toLocaleString('ja-JP')}</span></div>`;
+  }).join('');
+  // 表示中のビューに合わせて L7 / L3 の内訳を選ぶ（無ければもう一方）
+  const useL3 = state.view === 'l3';
+  const ind = (useL3 ? snap.industriesL3 : snap.industries) || snap.industries || snap.industriesL3;
+  const ver = (useL3 ? snap.verticalsL3 : snap.verticals) || snap.verticals || snap.verticalsL3;
+  const layer = useL3 && snap.industriesL3 ? 'L3/4 DDoS' : 'L7 HTTP DDoS';
+  let html = '';
+  if (ind && ind.length) html += `<h3>業種別 <small>${layer} の標的${snap.kind === 'demo' ? ' · 参考値' : ''}</small></h3>${rows(ind, ind[0].share || 1, 'ind')}`;
+  if (ver && ver.length) html += `<h3>分野別 <small>${layer} の標的${snap.kind === 'demo' ? ' · 参考値' : ''}</small></h3>${rows(ver, ver[0].share || 1, 'ver')}`;
+  if (snap.targets && snap.targets.length){
+    const meta = snap.targetsMeta || {};
+    html += `<h3>標的ホスト <small>自分の管理ドメイン</small></h3>${rows(snap.targets, snap.targets[0].count || 1, 'host')}
+      <div class="note">自分の Cloudflare ゾーンでブロック/チャレンジされたリクエスト数${meta.windowHours ? `（直近 ${meta.windowHours} 時間）` : ''}${meta.generatedAt ? ` · ${fmtDateTime(meta.generatedAt)} JST 集計` : ''}</div>`;
+  }
+  if (snap.kind === 'demo') html += `<div class="note">業種・分野はデモの参考値です。Cloudflare Radar を有効にすると、日本で実際に攻撃を受けている業種・分野のシェアに置き換わります。</div>`;
+  if (!snap.targets) html += `<div class="note">攻撃を受けた<b>個別の IP アドレスやドメイン</b>は被害者側が公表しないため公開データにありません。自分の管理ドメインへの攻撃は <code>CLOUDFLARE_ZONE_IDS</code> の設定、または カスタム JSON の <code>targets</code> で表示できます（README 参照）。</div>`;
+  if (!html) html = `<div class="empty">業種・分野の内訳はまだ取得できていません。</div>`;
+  el.innerHTML = html;
+}
 function pushFeed(ev){
   state.feed.unshift(ev); if (state.feed.length > 40) state.feed.length = 40;
   const ul = $('#feed');
@@ -829,7 +946,7 @@ async function refresh(){
   $('#srcText').textContent = '取得中…';
   const snap = await loadSnapshot();
   state.snapshot = snap;
-  rebuildList(); recordTrend(); renderRanking(); renderStatus();
+  rebuildList(); recordTrend(); renderRanking(); renderStatus(); renderVictims();
 }
 function schedule(){
   if (state.timer) clearInterval(state.timer);
@@ -837,7 +954,7 @@ function schedule(){
 }
 document.querySelectorAll('.seg [data-view]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.seg [data-view]').forEach(x => x.classList.toggle('on', x === b));
-  state.view = b.dataset.view; rebuildList(); recordTrend(); renderRanking();
+  state.view = b.dataset.view; rebuildList(); recordTrend(); renderRanking(); renderVictims();
 }));
 $('#pauseBtn').addEventListener('click', () => { state.paused = !state.paused; $('#pauseBtn').textContent = state.paused ? '▶ 再生' : '⏸ 停止'; });
 $('#sRate').addEventListener('input', () => { $('#sRateV').textContent = `現在 ${$('#sRate').value} 件/分`; settings.rate = Number($('#sRate').value); renderTiles(); });
