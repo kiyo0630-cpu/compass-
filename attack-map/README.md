@@ -52,7 +52,7 @@ npx wrangler secret put ALLOWED_ORIGIN   # 例 https://<user>.github.io
 
 | 段階 | 内容 | 必要なもの |
 |---|---|---|
-| 業種・分野の内訳 | 日本で攻撃を受けている業種（Gaming、Finance など）と分野のシェア。Cloudflare Radar から取得 | A〜C いずれかのライブ設定 |
+| 業種・分野の内訳 | 日本で攻撃を受けている業種（ゲーム、金融など）と分野のシェア。L7 と L3/4 それぞれ Cloudflare Radar から取得し、日本語名で表示。未設定時はデモの参考値 | A〜C いずれかのライブ設定 |
 | 自分の管理ドメイン | 自分の Cloudflare ゾーンでブロック/チャレンジされたリクエストを**ホスト名別**・送信元国別に集計 | 下記の `CLOUDFLARE_ZONE_IDS` |
 | 任意のログ | WAF、ハニーポット、fail2ban などの集計を `targets` 配列で取り込み | カスタム JSON |
 
@@ -86,7 +86,8 @@ Radar の国別シェアが取れない場合でも、`targets.json` に送信�
   "l7": [ { "code": "US", "share": 31.2 } ],
   "l3": [ { "code": "CN", "share": 18.5 } ],
   "series": { "timestamps": ["2026-10-10T00:00:00Z"], "values": [0.42] },
-  "industries": [ { "name": "Gaming", "share": 34.2 } ],
+  "industries": [ { "name": "Gaming", "share": 34.2 } ], "verticals": [ { "name": "Financial Services", "share": 18.0 } ],
+  "industriesL3": [ { "name": "Telecommunications", "share": 40.1 } ],
   "targets": [ { "host": "www.example.jp", "count": 1532 }, { "host": "203.0.113.10", "count": 80 } ] }
 ```
 

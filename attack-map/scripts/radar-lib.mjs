@@ -75,15 +75,17 @@ export async function buildSnapshot(token, dateRange = '1d', opt = {}) {
   const limit = String(opt.limit || 20);
   const common = { location: target, dateRange, limit };
 
-  const [l7, l3, ts, ind, ver] = await Promise.allSettled([
+  const [l7, l3, ts, ind, ver, ind3, ver3] = await Promise.allSettled([
     radarGet('/layer7/top/locations/origin', common, token),
     radarGet('/layer3/top/locations/origin', common, token),
     radarGet('/layer7/timeseries', { location: target, dateRange }, token),
     // 攻撃を受けている側の内訳（業種・分野）。個別のドメインや IP は Radar では公開されない
     radarGet('/layer7/top/industry', common, token),
     radarGet('/layer7/top/vertical', common, token),
+    radarGet('/layer3/top/industry', common, token),
+    radarGet('/layer3/top/vertical', common, token),
   ]);
-  const errors = [l7, l3, ts, ind, ver].filter((p) => p.status === 'rejected').map((p) => String(p.reason?.message || p.reason));
+  const errors = [l7, l3, ts, ind, ver, ind3, ver3].filter((p) => p.status === 'rejected').map((p) => String(p.reason?.message || p.reason));
   if (l7.status === 'rejected' && l3.status === 'rejected') throw new Error(errors.join(' / '));
 
   return {
@@ -98,6 +100,8 @@ export async function buildSnapshot(token, dateRange = '1d', opt = {}) {
     series: ts.status === 'fulfilled' ? pickSeries(ts.value) : null,
     industries: ind.status === 'fulfilled' ? normalizeNamed(pickNamed(ind.value)) : null,
     verticals: ver.status === 'fulfilled' ? normalizeNamed(pickNamed(ver.value)) : null,
+    industriesL3: ind3.status === 'fulfilled' ? normalizeNamed(pickNamed(ind3.value)) : null,
+    verticalsL3: ver3.status === 'fulfilled' ? normalizeNamed(pickNamed(ver3.value)) : null,
     meta: {
       l7: l7.status === 'fulfilled' ? l7.value?.result?.meta ?? null : null,
       l3: l3.status === 'fulfilled' ? l3.value?.result?.meta ?? null : null,
