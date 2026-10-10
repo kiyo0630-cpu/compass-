@@ -111,6 +111,17 @@ table.rank .trend.down{color:#9fe3bf}
 #spark{display:block;width:100%;height:84px;margin:4px 0 0}
 .sparkwrap{position:relative;padding:0 10px 10px}
 .sparktip{position:absolute;display:none;top:6px;right:14px;font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:#0b1120dd;border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.victim{padding:8px 14px 12px;font-size:12.5px}
+.victim h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:8px 0 4px}
+.victim .row{display:grid;grid-template-columns:minmax(0,1fr) 90px 52px;gap:8px;align-items:center;padding:3px 0}
+.victim .row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.victim .row .nm.mono{font-family:var(--mono);font-size:12px}
+.victim .row .bw{height:6px;background:#0b1120;border-radius:3px;overflow:hidden}
+.victim .row .bw i{display:block;height:100%;background:var(--l3);border-radius:3px}
+.victim .row .v{font-family:var(--mono);text-align:right;color:var(--text-2)}
+.victim .note{color:var(--muted);font-size:11.5px;line-height:1.6;margin-top:6px}
+.victim .note code{font-family:var(--mono);font-size:11px;background:#0b1120;padding:1px 5px;border-radius:4px}
+.victim .empty{color:var(--text-2);font-size:12px;line-height:1.7}
 ul.feed{list-style:none;padding:6px 8px 10px;font-family:var(--mono);font-size:12px;max-height:290px;overflow:auto}
 ul.feed li{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:6px;animation:fade .3s ease}
 ul.feed li:nth-child(odd){background:#0f172a80}
@@ -205,6 +216,11 @@ footer li{margin:2px 0}
       </div>
     </div>
 
+    <div class="card" id="victimCard">
+      <h2>攻撃を受けている側 <small>日本・標的の内訳</small></h2>
+      <div class="victim" id="victimBody"></div>
+    </div>
+
     <div class="card">
       <h2>ライブフィード <small>国別シェアに基づく表示</small></h2>
       <ul class="feed" id="feed" aria-live="off"></ul>
@@ -236,7 +252,7 @@ footer li{margin:2px 0}
     </label>
     <label>カスタム JSON URL
       <input id="sCustom" type="url" placeholder="https://example.com/feed.json">
-      <span class="help">形式: {"countries":[{"code":"US","share":31.2}]} または {"l7":[…],"l3":[…]}</span>
+      <span class="help">形式: {"countries":[{"code":"US","share":31.2}]} または {"l7":[…],"l3":[…],"targets":[{"host":"www.example.jp","count":120}]}</span>
     </label>
     <label>集計期間（Radar）
       <select id="sRange">
@@ -272,6 +288,7 @@ footer li{margin:2px 0}
   <ul>
     <li><b>何を見ているか:</b> 「日本を標的（宛先）とする攻撃」の<b>送信元 国・地域の構成比</b>です。国別シェアは Cloudflare Radar（L7 HTTP DDoS と L3/4 DDoS の上位送信元）などから取得し、地図の矢印とフィードはそのシェアに比例してランダム生成しています。1 本の矢印が 1 件の実際の攻撃を表すわけではありません。</li>
     <li><b>「国」の意味:</b> 送信元 IP アドレスの地理情報です。多くはボットネットに乗っ取られた機器やレンタルサーバーからの通信で、その国の政府や国民が攻撃者という意味ではありません。攻撃者は踏み台を使うため、本当の発信地は分かりません。</li>
+    <li><b>攻撃を受けている側:</b> 被害を受けた個別の IP アドレスやドメインは公開されません（被害者側が公表しないため）。公開データで分かるのは「日本のどの業種・分野が狙われているか」までです。自分が管理するドメインへの攻撃は、Cloudflare のゾーン分析やサーバーのログから集計して表示できます。</li>
     <li><b>リアルタイム性:</b> ライブデータの最短集計単位は直近 1 時間で、ページの更新間隔と GitHub Actions のスケジュール（既定で毎時）に依存します。「デモ」表示は NICTER 観測レポートなど公開統計の<b>傾向を参考にした概算の参考値</b>で、実測値ではありません。</li>
   </ul>
   <h3>参考資料</h3>
@@ -347,6 +364,7 @@ const JP_LL = [COUNTRIES.JP[2], COUNTRIES.JP[1]];
 const SETTINGS_KEY = 'attackmap.settings.v1';
 const TREND_KEY = 'attackmap.prev.v1';
 const FILE_URL = './data/latest.json';
+const TARGETS_URL = './data/targets.json';
 const FILE_FRESH_HOURS = 3;
 
 const $ = (s) => document.querySelector(s);
@@ -409,10 +427,24 @@ function normList(list){
   items.sort((a, b) => b.share - a.share);
   return items;
 }
+function normNamed(list){
+  if (!Array.isArray(list)) return null;
+  const items = list.map(x => ({name: String(x.name || ''), share: num(x.share ?? x.value), count: num(x.count)})).filter(x => x.name);
+  if (!items.length) return null;
+  if (!items.some(x => x.share)){ const tc = items.reduce((s, x) => s + (x.count || 0), 0); items.forEach(x => { x.share = tc ? (x.count || 0) / tc * 100 : 0; }); }
+  else items.forEach(x => { x.share = x.share || 0; });
+  return items.sort((a, b) => b.share - a.share);
+}
+function normTargets(list){
+  if (!Array.isArray(list)) return null;
+  const items = list.map(x => ({host: String(x.host || x.domain || x.ip || x.address || ''), count: num(x.count) || 0, type: x.type || null})).filter(x => x.host);
+  return items.length ? items.sort((a, b) => b.count - a.count) : null;
+}
 function normalizeSnapshot(raw, label){
   if (!raw || typeof raw !== 'object') throw new Error('JSON が空か、オブジェクトではありません');
   const base = {label, kind:'live', generatedAt: raw.generatedAt ? new Date(raw.generatedAt) : (raw.updated ? new Date(raw.updated) : null),
-    dateRange: raw.dateRange || null, series: raw.series || null, errors: Array.isArray(raw.errors) ? raw.errors : [], provider: raw.provider || null};
+    dateRange: raw.dateRange || null, series: raw.series || null, errors: Array.isArray(raw.errors) ? raw.errors : [], provider: raw.provider || null,
+    industries: normNamed(raw.industries), verticals: normNamed(raw.verticals), targets: normTargets(raw.targets)};
   if (Array.isArray(raw.l7) || Array.isArray(raw.l3)){
     const l7 = normList(raw.l7), l3 = normList(raw.l3);
     if (!l7 && !l3) throw new Error('l7 / l3 に有効な国データがありません');
@@ -497,6 +529,18 @@ async function loadSnapshot(){
   }
   if (!snap){ snap = demoSnapshot(); snap.fallback = true; }
   snap.tried = tried;
+  // 自分の Cloudflare ゾーンの集計（任意機能）。ある場合だけ使う
+  if (!snap.targets && (s.mode === 'auto' || s.mode === 'file')){
+    try {
+      const t = await fetchJSON(`${TARGETS_URL}?t=${Date.now()}`);
+      snap.targets = normTargets(t.targets); snap.targetsMeta = {generatedAt: t.generatedAt ? new Date(t.generatedAt) : null, windowHours: t.windowHours || null, provider: t.provider || null};
+      // 国別シェアが取れていない（デモ）なら、自ゾーンの送信元国を使う
+      if (snap.kind === 'demo' && Array.isArray(t.countries) && t.countries.length){
+        const l = normList(t.countries);
+        if (l){ Object.assign(snap, {kind:'live', label:'自分の Cloudflare ゾーンの FW イベント', provider:'cloudflare-zone-firewall', fallback:false, generatedAt: snap.targetsMeta.generatedAt, l7: l, l3: null, dateRange: t.windowHours ? `${t.windowHours}h` : null}); }
+      }
+    } catch (e){ /* 無ければ何もしない */ }
+  }
   return snap;
 }
 
@@ -783,6 +827,33 @@ function renderStatus(){
   msg.textContent = lines.join('\n');
   msg.className = 'msg' + (snap.fallback ? ' err' : '');
 }
+function renderVictims(){
+  const snap = state.snapshot, el = $('#victimBody');
+  if (!snap){ el.innerHTML = ''; return; }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const rows = (list, key, max, mono) => list.slice(0, 8).map(x => `<div class="row"><span class="nm${mono ? ' mono' : ''}" title="${esc(x[key])}">${esc(x[key])}</span><span class="bw"><i style="width:${Math.max(2, (x.share != null ? x.share / max : x.count / max) * 100)}%"></i></span><span class="v">${x.share != null ? fmtPct(x.share) + '%' : x.count.toLocaleString('ja-JP')}</span></div>`).join('');
+  let html = '';
+  if (snap.industries && snap.industries.length){
+    html += `<h3>業種別（L7 攻撃の標的）</h3>${rows(snap.industries, 'name', snap.industries[0].share || 1)}`;
+  }
+  if (snap.verticals && snap.verticals.length){
+    html += `<h3>分野別</h3>${rows(snap.verticals, 'name', snap.verticals[0].share || 1)}`;
+  }
+  if (snap.targets && snap.targets.length){
+    const meta = snap.targetsMeta || {};
+    html += `<h3>標的ホスト（自分の管理ドメイン）</h3>${rows(snap.targets.map(x => ({host: x.host, count: x.count, share: null})), 'host', snap.targets[0].count || 1, true)}
+      <div class="note">自分の Cloudflare ゾーンでブロック/チャレンジされたリクエスト数${meta.windowHours ? `（直近 ${meta.windowHours} 時間）` : ''}${meta.generatedAt ? ` · ${fmtDateTime(meta.generatedAt)} JST 集計` : ''}</div>`;
+  }
+  if (!html){
+    html = `<div class="empty">攻撃を受けている<b>個別の IP アドレスやドメイン</b>は、被害者側が公表しないため公開データには存在しません。公開されているのは業種・分野などの集計値までです。</div>
+      <div class="note">・Cloudflare Radar を有効にすると、ここに日本で攻撃を受けている<b>業種・分野の内訳</b>が表示されます。<br>
+      ・自分が管理するドメインへの攻撃は、Secrets に <code>CLOUDFLARE_ZONE_IDS</code> を追加すると<b>ホスト名別</b>に表示されます（README 参照）。<br>
+      ・他のログ（WAF、ハニーポット、fail2ban など）は、カスタム JSON の <code>targets</code> 配列で取り込めます。</div>`;
+  } else if (!snap.targets){
+    html += `<div class="note">個別の IP アドレスやドメインは公開データに含まれません。自分の管理ドメインへの攻撃は <code>CLOUDFLARE_ZONE_IDS</code> の設定、または カスタム JSON の <code>targets</code> で表示できます。</div>`;
+  }
+  el.innerHTML = html;
+}
 function pushFeed(ev){
   state.feed.unshift(ev); if (state.feed.length > 40) state.feed.length = 40;
   const ul = $('#feed');
@@ -829,7 +900,7 @@ async function refresh(){
   $('#srcText').textContent = '取得中…';
   const snap = await loadSnapshot();
   state.snapshot = snap;
-  rebuildList(); recordTrend(); renderRanking(); renderStatus();
+  rebuildList(); recordTrend(); renderRanking(); renderStatus(); renderVictims();
 }
 function schedule(){
   if (state.timer) clearInterval(state.timer);

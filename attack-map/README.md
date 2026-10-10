@@ -45,6 +45,32 @@ npx wrangler secret put ALLOWED_ORIGIN   # 例 https://<user>.github.io
 設定パネルの **Cloudflare API トークン** に入力すると、ブラウザの localStorage に保存して直接 API を呼びます。
 ブラウザの CORS 制限で失敗する場合は A または B を使ってください。トークンは他人と共有する端末では入力しないでください。
 
+## 攻撃を「受けている側」を見る
+
+被害を受けた**個別の IP アドレスやドメイン**は、被害者側が公表しないため公開データには存在しません。
+このページで表示できるのは次の 3 段階です。
+
+| 段階 | 内容 | 必要なもの |
+|---|---|---|
+| 業種・分野の内訳 | 日本で攻撃を受けている業種（Gaming、Finance など）と分野のシェア。Cloudflare Radar から取得 | A〜C いずれかのライブ設定 |
+| 自分の管理ドメイン | 自分の Cloudflare ゾーンでブロック/チャレンジされたリクエストを**ホスト名別**・送信元国別に集計 | 下記の `CLOUDFLARE_ZONE_IDS` |
+| 任意のログ | WAF、ハニーポット、fail2ban などの集計を `targets` 配列で取り込み | カスタム JSON |
+
+### 自分のドメインへの攻撃を表示する
+
+1. API トークンに **Zone → Analytics: Read**（対象ゾーン）の権限を追加する（Radar: Read と同じトークンでよい）
+2. リポジトリの Secrets に `CLOUDFLARE_ZONE_IDS` を登録する（ゾーン ID をカンマ区切り。Cloudflare ダッシュボードのサイト概要ページ右下に表示）
+3. 次回の Actions 実行から `attack-map/data/targets.json` が生成され、ページの「攻撃を受けている側」にホスト名別の件数が出ます
+
+ローカルで試す:
+
+```sh
+CLOUDFLARE_API_TOKEN=xxxx CLOUDFLARE_ZONE_IDS=zone1,zone2 \
+  node attack-map/scripts/targets-from-cloudflare-zone.mjs --out attack-map/data/targets.json --hours 24
+```
+
+Radar の国別シェアが取れない場合でも、`targets.json` に送信元国の集計があればそれを地図とランキングに使います。
+
 ## カスタム JSON
 
 独自のハニーポットや SIEM の集計を表示したい場合は、次のどちらかの形式の JSON を HTTPS（CORS 許可）で公開し、
@@ -59,7 +85,9 @@ npx wrangler secret put ALLOWED_ORIGIN   # 例 https://<user>.github.io
 { "generatedAt": "2026-10-10T12:00:00Z", "dateRange": "1d",
   "l7": [ { "code": "US", "share": 31.2 } ],
   "l3": [ { "code": "CN", "share": 18.5 } ],
-  "series": { "timestamps": ["2026-10-10T00:00:00Z"], "values": [0.42] } }
+  "series": { "timestamps": ["2026-10-10T00:00:00Z"], "values": [0.42] },
+  "industries": [ { "name": "Gaming", "share": 34.2 } ],
+  "targets": [ { "host": "www.example.jp", "count": 1532 }, { "host": "203.0.113.10", "count": 80 } ] }
 ```
 
 `share`（%）が無ければ `count` から構成比を計算します。`code` は ISO 3166-1 alpha-2 です。
@@ -73,6 +101,8 @@ attack-map/
   data/countries-110m.json 地図の輪郭（world-atlas）。Actions が初回に保存。無ければ CDN から取得
   scripts/radar-lib.mjs   Cloudflare Radar 取得・整形の共通ロジック
   scripts/fetch-radar.mjs Actions / ローカル実行用 CLI
+  scripts/targets-from-cloudflare-zone.mjs 自分のゾーンへの攻撃をホスト名別に集計（任意）
+  data/targets.json       上記の出力（CLOUDFLARE_ZONE_IDS 設定時のみ）
   worker/radar-proxy.js   Cloudflare Worker プロキシ
   worker/wrangler.toml
 .github/workflows/attack-map-feed.yml
