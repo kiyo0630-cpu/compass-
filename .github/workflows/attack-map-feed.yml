@@ -1,0 +1,51 @@
+name: attack-map feed
+
+# Cloudflare Radar から「日本を標的とする攻撃の送信元国シェア」を毎時取得し、
+# attack-map/data/latest.json としてコミットする。GitHub Pages 上のページがこのファイルを読む。
+# 有効化: リポジトリの Settings → Secrets and variables → Actions に CLOUDFLARE_API_TOKEN を登録する。
+on:
+  schedule:
+    - cron: '17 * * * *'   # 毎時 17 分（UTC）
+  workflow_dispatch:
+    inputs:
+      range:
+        description: '集計期間 (1h / 6h / 1d / 7d)'
+        default: '1d'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: attack-map-feed
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch snapshot from Cloudflare Radar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ATTACK_MAP_RANGE: ${{ github.event.inputs.range || '1d' }}
+        run: node attack-map/scripts/fetch-radar.mjs --out attack-map/data/latest.json
+      - name: Vendor world map outline (once)
+        run: |
+          if [ ! -s attack-map/data/countries-110m.json ]; then
+            curl -fsSL https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json -o attack-map/data/countries-110m.json
+          fi
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add attack-map/data/latest.json attack-map/data/countries-110m.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "attack-map: update feed $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+            git push
+          fi

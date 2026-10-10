@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1322">
+<title>日本へのサイバー攻撃マップ</title>
+<meta name="description" content="日本を標的とするサイバー攻撃（DDoS・スキャン）の送信元国を、世界地図上でリアルタイム風に可視化するページ。">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0c1322;
+  --surface:#111a2c;
+  --surface-2:#172238;
+  --line:#243150;
+  --text:#e8ecf5;
+  --text-2:#aab4c9;
+  --muted:#6f7d99;
+  --l7:#3987e5;      /* L7 HTTP DDoS: 青 */
+  --l3:#d95926;      /* L3/4 DDoS: 橙 */
+  --scan:#199e70;    /* スキャン/探索: 青緑 */
+  --brute:#9085e9;   /* 認証攻撃: 紫（デモのみ） */
+  --warn:#c98500;
+  --bad:#e66767;
+  --jp:#f5d27a;
+  --land:#1b2942;
+  --land-line:#2c3d60;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans);background:var(--bg);color:var(--text);
+  font-size:14px;line-height:1.6;min-height:100vh;padding:14px 16px 32px;
+}
+button,select,input{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+a{color:#7fb2f0}
+.wrap{max-width:1320px;margin:0 auto}
+
+/* ── ヘッダー ─────────────────────────── */
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 2px 12px}
+header h1{font-size:21px;font-weight:700;letter-spacing:.04em;line-height:1.3}
+header h1 .accent{color:var(--jp)}
+header .sub{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.statusbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:11.5px;letter-spacing:.06em;white-space:nowrap;background:var(--surface)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.chip.live{border-color:#1f7a4f;color:#9fe3bf}
+.chip.live .dot{background:#2fd27d;box-shadow:0 0 0 0 #2fd27d;animation:blink 1.6s infinite}
+.chip.stale{border-color:#8a5d10;color:#f1cf7d}
+.chip.stale .dot{background:var(--warn)}
+.chip.demo{border-color:#5a4aa0;color:#cfc7ff}
+.chip.demo .dot{background:var(--brute)}
+.chip.err{border-color:#8a3a3a;color:#ffb3b3}
+.chip.err .dot{background:var(--bad)}
+@keyframes blink{0%{box-shadow:0 0 0 0 rgba(47,210,125,.7)}70%{box-shadow:0 0 0 7px rgba(47,210,125,0)}100%{box-shadow:0 0 0 0 rgba(47,210,125,0)}}
+#clock{font-family:var(--mono);font-size:13px;color:var(--text)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ── レイアウト ───────────────────────── */
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items:start}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+
+/* ── 地図 ─────────────────────────────── */
+.mapcard{position:relative;overflow:hidden;padding:0}
+#map{display:block;width:100%;height:auto;background:
+  radial-gradient(900px 500px at 70% 40%, #14203a 0%, transparent 70%), var(--bg)}
+.maptoolbar{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0f172acc;backdrop-filter:blur(4px)}
+.seg button{padding:5px 11px;font-size:12px;background:none;border:none;color:var(--text-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--surface-2);color:var(--text);font-weight:600}
+.legend{position:absolute;left:12px;bottom:10px;display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--text-2);background:#0f172acc;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.legend .dash{width:10px;height:10px;border-radius:50%;border:2px solid var(--jp);background:none}
+.mapnote{position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--muted);text-align:right;max-width:46%}
+.tip{position:absolute;pointer-events:none;display:none;background:#0b1120ee;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);white-space:nowrap;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.tip b{font-size:13px}
+.tip .v{font-family:var(--mono);color:var(--text-2)}
+.mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;pointer-events:none}
+
+/* ── 右パネル ─────────────────────────── */
+.panel{display:flex;flex-direction:column;gap:14px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px}
+.tile{background:var(--surface-2);border-radius:9px;padding:9px 11px}
+.tile .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.25;margin-top:2px}
+.tile .v small{font-family:var(--sans);font-size:11px;color:var(--text-2);font-weight:400;margin-left:3px}
+.tile .s{font-size:11px;color:var(--text-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+h2{font-size:13px;letter-spacing:.12em;font-weight:600;color:var(--text-2);display:flex;align-items:baseline;gap:8px;padding:12px 14px 0}
+h2 small{font-weight:400;letter-spacing:0;color:var(--muted);font-size:11px}
+table.rank{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+table.rank th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:4px 14px 6px;border-bottom:1px solid var(--line)}
+table.rank th.n,table.rank td.n{text-align:right;font-family:var(--mono)}
+table.rank td{padding:5px 14px;border-bottom:1px solid #1b2640;vertical-align:middle;white-space:nowrap}
+table.rank tr:last-child td{border-bottom:none}
+table.rank tr{cursor:default}
+table.rank tr:hover td,table.rank tr.hl td{background:var(--surface-2)}
+table.rank td.c{width:1%;color:var(--muted);font-family:var(--mono);font-size:12px}
+table.rank .flag{font-size:16px;margin-right:6px;vertical-align:-1px}
+table.rank .bar{height:6px;border-radius:3px;background:var(--l7);min-width:2px}
+table.rank .barwrap{width:100%;min-width:70px}
+table.rank .trend{font-size:11px;color:var(--muted);min-width:3.4em;display:inline-block;text-align:right}
+table.rank .trend.up{color:#f0a5a5}
+table.rank .trend.down{color:#9fe3bf}
+.rankfoot{padding:8px 14px 12px;font-size:11px;color:var(--muted)}
+#spark{display:block;width:100%;height:84px;margin:4px 0 0}
+.sparkwrap{position:relative;padding:0 10px 10px}
+.sparktip{position:absolute;display:none;top:6px;right:14px;font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:#0b1120dd;border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+ul.feed{list-style:none;padding:6px 8px 10px;font-family:var(--mono);font-size:12px;max-height:290px;overflow:auto}
+ul.feed li{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:6px;animation:fade .3s ease}
+ul.feed li:nth-child(odd){background:#0f172a80}
+ul.feed .t{color:var(--muted)}
+ul.feed .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--sans)}
+ul.feed .ty{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid}
+ul.feed .ty.l7{color:#9cc3f5;border-color:var(--l7)}
+ul.feed .ty.l3{color:#f3b08d;border-color:var(--l3)}
+ul.feed .ty.scan{color:#8fe0bf;border-color:var(--scan)}
+ul.feed .ty.brute{color:#cfc7ff;border-color:var(--brute)}
+@keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+/* ── 設定・注記 ───────────────────────── */
+details.settings{margin-top:14px;padding:0 14px 12px}
+details.settings summary{cursor:pointer;padding:12px 0;font-weight:600;color:var(--text-2);letter-spacing:.06em}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 16px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-2)}
+.form input,.form select{background:#0b1120;border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;color:var(--text)}
+.form input[type=range]{padding:0}
+.form .help{font-size:11px;color:var(--muted)}
+.form .actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:7px 14px;font-size:13px}
+.btn.primary{background:#1c5cab;border-color:#1c5cab;color:#fff}
+.msg{font-size:12px;color:var(--text-2);margin-top:8px;font-family:var(--mono);white-space:pre-wrap}
+.msg.err{color:#ffb3b3}
+footer{margin-top:14px;padding:14px;font-size:12px;color:var(--text-2);line-height:1.7}
+footer h3{font-size:12.5px;color:var(--text);margin-bottom:4px;letter-spacing:.06em}
+footer ul{padding-left:1.3em}
+footer li{margin:2px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>日本への<span class="accent">サイバー攻撃</span>マップ</h1>
+    <div class="sub">Cyber attack map · Target: Japan</div>
+  </div>
+  <div class="statusbar">
+    <span id="srcChip" class="chip"><span class="dot"></span><span id="srcText">初期化中…</span></span>
+    <span class="chip"><span id="updText">最終更新 —</span></span>
+    <span id="clock" aria-label="日本時間">--:--:--</span>
+  </div>
+</header>
+
+<main>
+  <section class="card mapcard" aria-label="世界地図">
+    <canvas id="map" role="img" aria-label="日本に向かう攻撃の送信元国を示す世界地図"></canvas>
+    <div class="maptoolbar">
+      <div class="seg" role="group" aria-label="表示する攻撃種別">
+        <button data-view="all" class="on">統合</button>
+        <button data-view="l7">L7 (HTTP DDoS)</button>
+        <button data-view="l3">L3/4 DDoS</button>
+      </div>
+      <div class="seg" role="group" aria-label="アニメーション">
+        <button id="pauseBtn" title="アニメーションを一時停止">⏸ 停止</button>
+      </div>
+    </div>
+    <div class="legend" aria-label="凡例">
+      <span><i style="background:var(--l7)"></i>L7 HTTP DDoS</span>
+      <span><i style="background:var(--l3)"></i>L3/4 DDoS</span>
+      <span><i style="background:var(--scan)"></i>スキャン/探索</span>
+      <span><i style="background:var(--brute)"></i>認証攻撃</span>
+      <span><i class="dash"></i>標的: 日本</span>
+    </div>
+    <div class="mapnote" id="mapNote"></div>
+    <div class="tip" id="tip"></div>
+    <div class="mapmsg" id="mapMsg">地図データを読み込み中…</div>
+  </section>
+
+  <aside class="panel">
+    <div class="card">
+      <div class="tiles">
+        <div class="tile"><div class="k">表示レート</div><div class="v"><span id="tRate">—</span><small>件/分</small></div><div class="s" id="tRateS">演出用のイベント頻度</div></div>
+        <div class="tile"><div class="k">送信元 国・地域</div><div class="v"><span id="tCountries">—</span></div><div class="s" id="tCountriesS">ランキング掲載数</div></div>
+        <div class="tile"><div class="k">1位のシェア</div><div class="v"><span id="tTop">—</span></div><div class="s" id="tTopS">—</div></div>
+        <div class="tile"><div class="k">上位3か国 合計</div><div class="v"><span id="tTop3">—</span></div><div class="s" id="tTop3S">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>送信元 国別ランキング <small id="rankSub"></small></h2>
+      <table class="rank" id="rank">
+        <thead><tr><th>#</th><th>国・地域</th><th>シェア</th><th class="n">%</th><th class="n">前回比</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="rankfoot" id="rankFoot"></div>
+      <div class="sparkwrap" id="sparkWrap" hidden>
+        <h2 style="padding:0 4px 2px">L7 攻撃量の推移 <small>直近の期間・相対値</small></h2>
+        <canvas id="spark" aria-label="L7攻撃量の時系列"></canvas>
+        <div class="sparktip" id="sparkTip"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ライブフィード <small>国別シェアに基づく表示</small></h2>
+      <ul class="feed" id="feed" aria-live="off"></ul>
+    </div>
+  </aside>
+</main>
+
+<details class="card settings" id="settings">
+  <summary>⚙ データソース設定</summary>
+  <div class="form">
+    <label>データソース
+      <select id="sMode">
+        <option value="auto">自動（data/latest.json → トークン → プロキシ → デモ）</option>
+        <option value="file">data/latest.json（GitHub Actions が更新）</option>
+        <option value="cloudflare">Cloudflare Radar API を直接呼ぶ（トークン必要）</option>
+        <option value="proxy">プロキシ URL（Cloudflare Worker）</option>
+        <option value="custom">カスタム JSON URL</option>
+        <option value="demo">デモ（公開統計を参考にした参考値）</option>
+      </select>
+      <span class="help">「自動」は上から順に試し、使えるものを採用します。</span>
+    </label>
+    <label>Cloudflare API トークン（Radar: Read）
+      <input id="sToken" type="password" autocomplete="off" placeholder="このブラウザにのみ保存されます">
+      <span class="help">ブラウザから直接呼べない（CORS）場合は、Worker プロキシか GitHub Actions を使ってください。</span>
+    </label>
+    <label>プロキシ URL
+      <input id="sProxy" type="url" placeholder="https://xxx.workers.dev/">
+      <span class="help">同梱の worker/radar-proxy.js をデプロイした URL。</span>
+    </label>
+    <label>カスタム JSON URL
+      <input id="sCustom" type="url" placeholder="https://example.com/feed.json">
+      <span class="help">形式: {"countries":[{"code":"US","share":31.2}]} または {"l7":[…],"l3":[…]}</span>
+    </label>
+    <label>集計期間（Radar）
+      <select id="sRange">
+        <option value="1h">直近 1 時間</option>
+        <option value="6h">直近 6 時間</option>
+        <option value="1d" selected>直近 24 時間</option>
+        <option value="7d">直近 7 日</option>
+      </select>
+    </label>
+    <label>更新間隔
+      <select id="sInterval">
+        <option value="1">1 分</option>
+        <option value="5" selected>5 分</option>
+        <option value="15">15 分</option>
+        <option value="60">60 分</option>
+      </select>
+    </label>
+    <label>表示レート（件/分）<span id="sRateV" class="help"></span>
+      <input id="sRate" type="range" min="10" max="300" step="10" value="90">
+      <span class="help">地図上の矢印とフィードの頻度。実測の件数ではなく演出です。</span>
+    </label>
+    <div class="actions">
+      <button class="btn primary" id="saveBtn">保存して再読込</button>
+      <button class="btn" id="reloadBtn">今すぐ更新</button>
+      <button class="btn" id="clearBtn" title="このブラウザに保存した設定を消去">設定を消去</button>
+    </div>
+  </div>
+  <div class="msg" id="msg"></div>
+</details>
+
+<footer class="card">
+  <h3>このページの読み方</h3>
+  <ul>
+    <li><b>何を見ているか:</b> 「日本を標的（宛先）とする攻撃」の<b>送信元 国・地域の構成比</b>です。国別シェアは Cloudflare Radar（L7 HTTP DDoS と L3/4 DDoS の上位送信元）などから取得し、地図の矢印とフィードはそのシェアに比例してランダム生成しています。1 本の矢印が 1 件の実際の攻撃を表すわけではありません。</li>
+    <li><b>「国」の意味:</b> 送信元 IP アドレスの地理情報です。多くはボットネットに乗っ取られた機器やレンタルサーバーからの通信で、その国の政府や国民が攻撃者という意味ではありません。攻撃者は踏み台を使うため、本当の発信地は分かりません。</li>
+    <li><b>リアルタイム性:</b> ライブデータの最短集計単位は直近 1 時間で、ページの更新間隔と GitHub Actions のスケジュール（既定で毎時）に依存します。「デモ」表示は NICTER 観測レポートなど公開統計の<b>傾向を参考にした概算の参考値</b>で、実測値ではありません。</li>
+  </ul>
+  <h3>参考資料</h3>
+  <ul>
+    <li>NICT <a href="https://www.nict.go.jp/press/2026/02/05-1.html" target="_blank" rel="noopener">NICTER 観測レポート 2025</a>（日本のダークネット観測：2025 年に約 7,010 億パケット、調査目的スキャンが約 55%）・<a href="https://blog.nicter.jp/" target="_blank" rel="noopener">NICTER 観測統計（四半期）</a></li>
+    <li>Cloudflare <a href="https://radar.cloudflare.com/security?location=jp" target="_blank" rel="noopener">Radar: Japan</a>・<a href="https://developers.cloudflare.com/radar/" target="_blank" rel="noopener">Radar API ドキュメント</a></li>
+    <li>総務省 <a href="https://www.soumu.go.jp/johotsusintokei/whitepaper/" target="_blank" rel="noopener">情報通信白書</a>「サイバーセキュリティ上の脅威の増大」</li>
+  </ul>
+</footer>
+</div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════════
+   国・地域テーブル: ISO 3166-1 alpha-2 → [日本語名, 緯度, 経度]
+   ════════════════════════════════════════════════════════════════════ */
+const COUNTRIES = {
+  JP:['日本',36.2,138.3], US:['アメリカ',39.8,-98.6], CN:['中国',35.9,104.2], RU:['ロシア',60.0,90.0],
+  NL:['オランダ',52.1,5.3], BG:['ブルガリア',42.7,25.5], GB:['イギリス',54.0,-2.0], DE:['ドイツ',51.2,10.4],
+  FR:['フランス',46.6,2.2], IN:['インド',21.0,78.0], BR:['ブラジル',-10.0,-53.0], TW:['台湾',23.7,121.0],
+  HK:['香港',22.3,114.2], KR:['韓国',36.5,127.9], VN:['ベトナム',16.0,107.5], IR:['イラン',32.4,53.7],
+  ID:['インドネシア',-2.5,118.0], SG:['シンガポール',1.35,103.8], UA:['ウクライナ',49.0,31.4], TR:['トルコ',39.0,35.2],
+  PL:['ポーランド',51.9,19.1], RO:['ルーマニア',45.9,25.0], IT:['イタリア',42.5,12.5], ES:['スペイン',40.3,-3.7],
+  SE:['スウェーデン',62.0,16.0], FI:['フィンランド',64.0,26.0], LT:['リトアニア',55.2,23.9], LV:['ラトビア',56.9,24.6],
+  MD:['モルドバ',47.4,28.4], SC:['セーシェル',-4.7,55.5], PA:['パナマ',8.5,-80.0], CA:['カナダ',58.0,-100.0],
+  MX:['メキシコ',23.6,-102.5], AR:['アルゼンチン',-34.6,-64.0], CO:['コロンビア',4.6,-74.1], CL:['チリ',-33.4,-70.7],
+  TH:['タイ',15.9,100.9], MY:['マレーシア',4.2,102.0], PH:['フィリピン',12.9,121.8], BD:['バングラデシュ',23.7,90.4],
+  PK:['パキスタン',30.4,69.3], KP:['北朝鮮',40.3,127.5], MN:['モンゴル',46.9,103.8], KZ:['カザフスタン',48.0,67.0],
+  AU:['オーストラリア',-25.3,133.8], NZ:['ニュージーランド',-41.5,172.5], ZA:['南アフリカ',-29.0,25.0], NG:['ナイジェリア',9.1,8.7],
+  EG:['エジプト',26.8,30.8], KE:['ケニア',0.0,37.9], MA:['モロッコ',31.8,-7.1], DZ:['アルジェリア',28.0,2.6],
+  SA:['サウジアラビア',24.0,45.0], AE:['アラブ首長国連邦',24.0,54.0], IL:['イスラエル',31.0,35.0], IQ:['イラク',33.2,43.7],
+  CH:['スイス',46.8,8.2], AT:['オーストリア',47.5,14.6], BE:['ベルギー',50.5,4.5], CZ:['チェコ',49.8,15.5],
+  HU:['ハンガリー',47.2,19.5], GR:['ギリシャ',39.1,21.8], PT:['ポルトガル',39.4,-8.2], IE:['アイルランド',53.1,-8.0],
+  NO:['ノルウェー',62.0,10.0], DK:['デンマーク',56.0,10.0], EE:['エストニア',58.6,25.0], BY:['ベラルーシ',53.7,27.9],
+  RS:['セルビア',44.0,21.0], HR:['クロアチア',45.1,15.2], GE:['ジョージア',42.3,43.4], AM:['アルメニア',40.1,45.0],
+  AZ:['アゼルバイジャン',40.1,47.6], UZ:['ウズベキスタン',41.4,64.6], LK:['スリランカ',7.9,80.8], NP:['ネパール',28.4,84.1],
+  MM:['ミャンマー',19.8,96.7], KH:['カンボジア',12.6,104.9], LA:['ラオス',19.9,102.5], PE:['ペルー',-9.2,-75.0],
+  VE:['ベネズエラ',6.4,-66.6], EC:['エクアドル',-1.8,-78.2], BO:['ボリビア',-16.3,-63.6], PY:['パラグアイ',-23.4,-58.4],
+  UY:['ウルグアイ',-32.5,-55.8], CR:['コスタリカ',9.7,-83.8], DO:['ドミニカ共和国',18.7,-70.2], CU:['キューバ',21.5,-79.0],
+  PR:['プエルトリコ',18.2,-66.5], GT:['グアテマラ',15.8,-90.2], LU:['ルクセンブルク',49.8,6.1], CY:['キプロス',35.1,33.4],
+  MT:['マルタ',35.9,14.4], IS:['アイスランド',65.0,-18.0], TN:['チュニジア',33.9,9.5], GH:['ガーナ',7.9,-1.0],
+  ET:['エチオピア',9.1,40.5], TZ:['タンザニア',-6.4,34.9], AO:['アンゴラ',-11.2,17.9], CM:['カメルーン',7.4,12.4],
+  SN:['セネガル',14.5,-14.5], CI:['コートジボワール',7.5,-5.5], MZ:['モザンビーク',-18.7,35.5], ZW:['ジンバブエ',-19.0,29.2],
+  SK:['スロバキア',48.7,19.7], SI:['スロベニア',46.1,14.8], BA:['ボスニア・ヘルツェゴビナ',43.9,17.7], AL:['アルバニア',41.2,20.2],
+  MK:['北マケドニア',41.6,21.7], KG:['キルギス',41.2,74.8], TJ:['タジキスタン',38.9,71.3], TM:['トルクメニスタン',39.0,59.6],
+  AF:['アフガニスタン',33.9,67.7], OM:['オマーン',21.5,55.9], KW:['クウェート',29.3,47.5], QA:['カタール',25.3,51.2],
+  JO:['ヨルダン',31.2,36.5], LB:['レバノン',33.9,35.9], SY:['シリア',35.0,38.0], YE:['イエメン',15.6,48.5],
+  LY:['リビア',26.3,17.2], SD:['スーダン',15.6,30.2], UG:['ウガンダ',1.4,32.3], ZM:['ザンビア',-13.1,27.8],
+  MU:['モーリシャス',-20.3,57.6], MG:['マダガスカル',-18.8,46.9], NA:['ナミビア',-22.6,17.1], BW:['ボツワナ',-22.3,24.7],
+  HN:['ホンジュラス',14.8,-86.7], SV:['エルサルバドル',13.8,-88.9], NI:['ニカラグア',12.9,-85.2], JM:['ジャマイカ',18.1,-77.3],
+  TT:['トリニダード・トバゴ',10.7,-61.2], BZ:['ベリーズ',17.2,-88.5], PG:['パプアニューギニア',-6.3,147.0], FJ:['フィジー',-17.7,178.0],
+  MO:['マカオ',22.2,113.5], BN:['ブルネイ',4.5,114.7], MV:['モルディブ',3.2,73.2], BT:['ブータン',27.5,90.4],
+  GL:['グリーンランド',72.0,-40.0], VG:['英領バージン諸島',18.4,-64.6], KY:['ケイマン諸島',19.3,-81.3], BS:['バハマ',25.0,-77.4],
+  GI:['ジブラルタル',36.1,-5.3], IM:['マン島',54.2,-4.5], JE:['ジャージー',49.2,-2.1], GG:['ガーンジー',49.5,-2.6],
+  LI:['リヒテンシュタイン',47.2,9.5], ME:['モンテネグロ',42.7,19.4], XK:['コソボ',42.6,20.9], VA:['バチカン',41.9,12.5],
+  EU:['欧州（国不明）',50.0,10.0], AP:['アジア太平洋（国不明）',10.0,120.0], T1:['Tor 出口ノード',0,0], XX:['不明',0,0]
+};
+/* デモ用の参考ウェイト（%相当）。公開レポートの傾向を参考にした概算で実測値ではない。 */
+const DEMO_WEIGHTS = {
+  US:28, CN:11, NL:7, RU:7, BG:4, GB:4, DE:4, IN:4, TW:3.5, HK:3, KR:3, BR:3, JP:3,
+  VN:2.5, SG:2.5, IR:2, ID:2, FR:2, UA:1.5, TR:1.5, PL:1, RO:1, SC:1, PA:1, CA:1, TH:1, LT:0.5, SE:0.5, MD:0.5, AR:0.5
+};
+const DEMO_PORTS = {
+  scan:['23/TCP Telnet','22/TCP SSH','445/TCP SMB','80/TCP HTTP','443/TCP HTTPS','8080/TCP','3389/TCP RDP','5555/TCP ADB','6379/TCP Redis','37215/TCP','52869/TCP UPnP','1433/TCP MSSQL','53413/UDP','8443/TCP','2375/TCP Docker','5060/UDP SIP','123/UDP NTP','161/UDP SNMP','81/TCP','7547/TCP TR-069'],
+  brute:['22/TCP SSH','3389/TCP RDP','21/TCP FTP','23/TCP Telnet','5900/TCP VNC','1433/TCP MSSQL','3306/TCP MySQL','25/TCP SMTP'],
+  l7:['443/TCP HTTPS','80/TCP HTTP','443/UDP HTTP/3'],
+  l3:['UDP flood','SYN flood','DNS amp','NTP amp','ACK flood','SSDP amp','ICMP flood']
+};
+const TYPE_LABEL = {scan:'スキャン', brute:'認証攻撃', l7:'HTTP DDoS', l3:'L3/4 DDoS'};
+
+const LON0 = 150, LAT_MIN = -58, LAT_MAX = 84;
+const JP_LL = [COUNTRIES.JP[2], COUNTRIES.JP[1]];
+const SETTINGS_KEY = 'attackmap.settings.v1';
+const TREND_KEY = 'attackmap.prev.v1';
+const FILE_URL = './data/latest.json';
+const FILE_FRESH_HOURS = 3;
+
+const $ = (s) => document.querySelector(s);
+const flag = (code) => /^[A-Z]{2}$/.test(code) && code !== 'XX' && code !== 'T1'
+  ? String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '🏴';
+const nameOf = (code, fallback) => (COUNTRIES[code] && COUNTRIES[code][0]) || fallback || code;
+const fmtPct = (v) => v >= 10 ? v.toFixed(1) : v.toFixed(2);
+const fmtTime = (d) => d.toLocaleTimeString('ja-JP', {hour12:false, timeZone:'Asia/Tokyo'});
+const fmtDateTime = (d) => d.toLocaleString('ja-JP', {hour12:false, timeZone:'Asia/Tokyo', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+
+/* ════════════════════════════════════════════════════════════════════
+   設定
+   ════════════════════════════════════════════════════════════════════ */
+const DEFAULTS = {mode:'auto', token:'', proxy:'', custom:'', range:'1d', interval:5, rate:90};
+function loadSettings(){
+  try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+  catch { return {...DEFAULTS}; }
+}
+function saveSettings(s){ try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} }
+let settings = loadSettings();
+
+function fillForm(){
+  $('#sMode').value = settings.mode; $('#sToken').value = settings.token; $('#sProxy').value = settings.proxy;
+  $('#sCustom').value = settings.custom; $('#sRange').value = settings.range; $('#sInterval').value = String(settings.interval);
+  $('#sRate').value = settings.rate; $('#sRateV').textContent = `現在 ${settings.rate} 件/分`;
+}
+function readForm(){
+  return {
+    mode: $('#sMode').value, token: $('#sToken').value.trim(), proxy: $('#sProxy').value.trim(),
+    custom: $('#sCustom').value.trim(), range: $('#sRange').value,
+    interval: Number($('#sInterval').value) || 5, rate: Number($('#sRate').value) || 90
+  };
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   データ取得・正規化
+   snapshot = {label, kind:'live'|'demo', generatedAt:Date|null, dateRange, l7:[{code,name,share}], l3:[...]|null, series, errors:[]}
+   ════════════════════════════════════════════════════════════════════ */
+async function fetchJSON(url, opts = {}){
+  const r = await fetch(url, Object.assign({cache:'no-store'}, opts));
+  if (!r.ok) throw new Error(`HTTP ${r.status} (${url.split('?')[0]})`);
+  return r.json();
+}
+const num = (v) => { const n = typeof v === 'string' ? parseFloat(v) : v; return Number.isFinite(n) ? n : null; };
+
+function normList(list){
+  if (!Array.isArray(list)) return null;
+  const items = list.map(x => ({
+    code: String(x.code || x.originCountryAlpha2 || x.country || x.alpha2 || '').toUpperCase(),
+    name: x.name || x.originCountryName || null,
+    share: num(x.share ?? x.value ?? x.percent ?? x.pct),
+    count: num(x.count ?? x.packets ?? x.events)
+  })).filter(x => /^[A-Z0-9]{2}$/.test(x.code));
+  if (!items.length) return null;
+  const total = items.reduce((s, x) => s + (x.share || 0), 0);
+  if (!total){ // share が無く count だけの場合は構成比を計算
+    const tc = items.reduce((s, x) => s + (x.count || 0), 0);
+    items.forEach(x => { x.share = tc ? (x.count || 0) / tc * 100 : 0; });
+  } else items.forEach(x => { x.share = x.share || 0; });
+  items.sort((a, b) => b.share - a.share);
+  return items;
+}
+function normalizeSnapshot(raw, label){
+  if (!raw || typeof raw !== 'object') throw new Error('JSON が空か、オブジェクトではありません');
+  const base = {label, kind:'live', generatedAt: raw.generatedAt ? new Date(raw.generatedAt) : (raw.updated ? new Date(raw.updated) : null),
+    dateRange: raw.dateRange || null, series: raw.series || null, errors: Array.isArray(raw.errors) ? raw.errors : [], provider: raw.provider || null};
+  if (Array.isArray(raw.l7) || Array.isArray(raw.l3)){
+    const l7 = normList(raw.l7), l3 = normList(raw.l3);
+    if (!l7 && !l3) throw new Error('l7 / l3 に有効な国データがありません');
+    return Object.assign(base, {l7, l3});
+  }
+  if (Array.isArray(raw.countries)){ const l = normList(raw.countries); if (!l) throw new Error('countries に有効な国データがありません'); return Object.assign(base, {l7:l, l3:null}); }
+  if (Array.isArray(raw)){ const l = normList(raw); if (!l) throw new Error('配列に有効な国データがありません'); return Object.assign(base, {l7:l, l3:null}); }
+  throw new Error('不明な JSON 形式です');
+}
+function demoSnapshot(){
+  const l7 = normList(Object.entries(DEMO_WEIGHTS).map(([code, share]) => ({code, share})));
+  return {label:'デモ（公開統計の傾向を参考にした参考値）', kind:'demo', generatedAt:null, dateRange:null, l7, l3:null, series:null, errors:[], provider:'demo'};
+}
+
+/* Cloudflare Radar API のレスポンスから上位国配列・時系列を取り出す（キー名の違いに耐える） */
+function pickTop(resp){
+  const r = (resp && resp.result) || {};
+  for (const k of Object.keys(r)){
+    const v = r[k];
+    if (Array.isArray(v) && v.length && typeof v[0] === 'object' && Object.keys(v[0]).some(key => /CountryAlpha2$/i.test(key))) return v;
+  }
+  return null;
+}
+function pickSeries(resp){
+  const r = (resp && resp.result) || {};
+  for (const k of Object.keys(r)){
+    const v = r[k];
+    if (v && typeof v === 'object' && Array.isArray(v.timestamps) && Array.isArray(v.values)) return {timestamps:v.timestamps, values:v.values.map(num)};
+  }
+  return null;
+}
+async function loadCloudflareDirect(token, range){
+  const base = 'https://api.cloudflare.com/client/v4/radar/attacks';
+  const opts = {headers:{Authorization:`Bearer ${token}`}};
+  const q = `?location=JP&dateRange=${encodeURIComponent(range)}&limit=20`;
+  const [l7, l3, ts] = await Promise.allSettled([
+    fetchJSON(`${base}/layer7/top/locations/origin${q}`, opts),
+    fetchJSON(`${base}/layer3/top/locations/origin${q}`, opts),
+    fetchJSON(`${base}/layer7/timeseries?location=JP&dateRange=${encodeURIComponent(range)}`, opts)
+  ]);
+  const errors = [l7, l3, ts].filter(p => p.status === 'rejected').map(p => String(p.reason && p.reason.message || p.reason));
+  if (l7.status === 'rejected' && l3.status === 'rejected'){
+    const m = errors.join(' / ');
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) throw new Error('Cloudflare API にブラウザから直接アクセスできませんでした（CORS 制限の可能性）。Worker プロキシか GitHub Actions を使ってください。');
+    throw new Error(m);
+  }
+  return normalizeSnapshot({
+    generatedAt: new Date().toISOString(), dateRange: range, provider:'cloudflare-radar',
+    l7: l7.status === 'fulfilled' ? pickTop(l7.value) : null,
+    l3: l3.status === 'fulfilled' ? pickTop(l3.value) : null,
+    series: ts.status === 'fulfilled' ? pickSeries(ts.value) : null, errors
+  }, 'Cloudflare Radar（直接）');
+}
+async function loadProxy(url, range){
+  const u = new URL(url, location.href); u.searchParams.set('dateRange', range); u.searchParams.set('t', Date.now());
+  return normalizeSnapshot(await fetchJSON(u.toString()), 'Cloudflare Radar（プロキシ経由）');
+}
+async function loadFile(){
+  const snap = normalizeSnapshot(await fetchJSON(`${FILE_URL}?t=${Date.now()}`), 'data/latest.json（GitHub Actions）');
+  if (snap.generatedAt && Date.now() - snap.generatedAt.getTime() > FILE_FRESH_HOURS * 3600e3) snap.stale = true;
+  return snap;
+}
+async function loadCustom(url){
+  const u = new URL(url, location.href); u.searchParams.set('t', Date.now());
+  return normalizeSnapshot(await fetchJSON(u.toString()), 'カスタム JSON');
+}
+
+async function loadSnapshot(){
+  const s = settings, tried = [];
+  const attempt = async (name, fn) => { try { return await fn(); } catch (e){ tried.push(`${name}: ${e.message}`); return null; } };
+  let snap = null;
+  if (s.mode === 'demo') snap = demoSnapshot();
+  else if (s.mode === 'file') snap = await attempt('data/latest.json', loadFile);
+  else if (s.mode === 'cloudflare') snap = s.token ? await attempt('Cloudflare', () => loadCloudflareDirect(s.token, s.range)) : (tried.push('Cloudflare: トークンが未設定です'), null);
+  else if (s.mode === 'proxy') snap = s.proxy ? await attempt('プロキシ', () => loadProxy(s.proxy, s.range)) : (tried.push('プロキシ: URL が未設定です'), null);
+  else if (s.mode === 'custom') snap = s.custom ? await attempt('カスタム', () => loadCustom(s.custom)) : (tried.push('カスタム: URL が未設定です'), null);
+  else { // auto
+    snap = await attempt('data/latest.json', loadFile);
+    if (!snap && s.token) snap = await attempt('Cloudflare', () => loadCloudflareDirect(s.token, s.range));
+    if (!snap && s.proxy) snap = await attempt('プロキシ', () => loadProxy(s.proxy, s.range));
+    if (!snap && s.custom) snap = await attempt('カスタム', () => loadCustom(s.custom));
+  }
+  if (!snap){ snap = demoSnapshot(); snap.fallback = true; }
+  snap.tried = tried;
+  return snap;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   状態
+   ════════════════════════════════════════════════════════════════════ */
+const state = {
+  snapshot: null, view:'all', list: [], cum: [], cumTotal: 0,
+  particles: [], pulses: [], feed: [], paused: false, hover: null, lastTick: 0, acc: 0, timer: null,
+  hoverCode: null
+};
+
+function viewList(snap, view){
+  if (!snap) return [];
+  if (view === 'l7') return snap.l7 || snap.l3 || [];
+  if (view === 'l3') return snap.l3 || snap.l7 || [];
+  if (!snap.l3) return snap.l7 || [];
+  if (!snap.l7) return snap.l3;
+  const m = new Map();
+  for (const x of snap.l7) m.set(x.code, {code:x.code, name:x.name, share:x.share / 2});
+  for (const x of snap.l3){ const e = m.get(x.code); if (e) e.share += x.share / 2; else m.set(x.code, {code:x.code, name:x.name, share:x.share / 2}); }
+  return [...m.values()].sort((a, b) => b.share - a.share);
+}
+function rebuildList(){
+  state.list = viewList(state.snapshot, state.view).filter(x => x.share > 0).slice(0, 20);
+  let t = 0; state.cum = state.list.map(x => (t += x.share)); state.cumTotal = t;
+  renderRanking(); renderTiles(); drawSpark();
+}
+function pickCountry(){
+  if (!state.list.length) return null;
+  const r = Math.random() * state.cumTotal;
+  for (let i = 0; i < state.cum.length; i++) if (r < state.cum[i]) return state.list[i];
+  return state.list[state.list.length - 1];
+}
+function pickType(){
+  const snap = state.snapshot;
+  if (!snap || snap.kind === 'demo'){ const r = Math.random(); return r < .58 ? 'scan' : r < .78 ? 'l7' : r < .9 ? 'l3' : 'brute'; }
+  if (state.view === 'l7') return 'l7';
+  if (state.view === 'l3') return 'l3';
+  if (!snap.l3) return 'l7';
+  if (!snap.l7) return 'l3';
+  return Math.random() < .68 ? 'l7' : 'l3';
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   地図（TopoJSON を自前デコードし、太平洋中心の正距円筒図法で描く）
+   ════════════════════════════════════════════════════════════════════ */
+const canvas = $('#map'), ctx = canvas.getContext('2d');
+let W = 0, H = 0, dpr = 1, base = null, polys = null, mapReady = false;
+
+function decodeTopo(topo){
+  const tr = topo.transform;
+  const arcs = topo.arcs.map(arc => {
+    let x = 0, y = 0;
+    return arc.map(p => {
+      if (tr){ x += p[0]; y += p[1]; return [x * tr.scale[0] + tr.translate[0], y * tr.scale[1] + tr.translate[1]]; }
+      return [p[0], p[1]];
+    });
+  });
+  const ring = (idx) => {
+    const pts = [];
+    for (const i of idx){ let a = i < 0 ? arcs[~i].slice().reverse() : arcs[i]; if (pts.length) a = a.slice(1); pts.push(...a); }
+    return pts;
+  };
+  const obj = topo.objects.countries || Object.values(topo.objects)[0];
+  const out = [];
+  for (const g of obj.geometries){
+    const id = String(g.id ?? '');
+    if (g.type === 'Polygon') out.push({id, rings: g.arcs.map(ring)});
+    else if (g.type === 'MultiPolygon') for (const p of g.arcs) out.push({id, rings: p.map(ring)});
+  }
+  return out;
+}
+async function loadWorld(){
+  // 同梱コピー（GitHub Actions が初回に保存）→ CDN の順に試す
+  const urls = ['./data/countries-110m.json', 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json', 'https://unpkg.com/world-atlas@2.0.2/countries-110m.json'];
+  for (const u of urls){ try { const r = await fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status); return decodeTopo(await r.json()); } catch (e){ console.warn('world map load failed', u, e); } }
+  return null;
+}
+function baseX(lon){ return (lon + 180) / 360 * W; }
+function projY(lat){ return (LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * H; }
+function proj(lon, lat){ const l = ((lon - LON0 + 540) % 360) - 180; return [(l + 180) / 360 * W, projY(lat)]; }
+
+function renderBase(){
+  base = document.createElement('canvas'); base.width = Math.round(W * dpr); base.height = Math.round(H * dpr);
+  const b = base.getContext('2d'); b.scale(dpr, dpr);
+  // 経緯線
+  b.strokeStyle = '#18233a'; b.lineWidth = 1;
+  for (let lon = -180; lon <= 180; lon += 30){ b.beginPath(); b.moveTo(baseX(lon), 0); b.lineTo(baseX(lon), H); b.stroke(); }
+  for (let lat = -60; lat <= 80; lat += 20){ b.beginPath(); b.moveTo(0, projY(lat)); b.lineTo(W, projY(lat)); b.stroke(); }
+  if (!polys) return;
+  b.lineJoin = 'round';
+  for (const p of polys){
+    if (p.id === '010') continue; // 南極は範囲外
+    const isJP = p.id === '392';
+    b.beginPath();
+    for (const r of p.rings){ r.forEach(([lon, lat], i) => { const x = baseX(lon), y = projY(lat); i ? b.lineTo(x, y) : b.moveTo(x, y); }); b.closePath(); }
+    b.fillStyle = isJP ? '#3a3a2a' : getComputedStyle(document.documentElement).getPropertyValue('--land').trim() || '#1b2942';
+    b.fill('evenodd');
+    b.strokeStyle = isJP ? '#f5d27a' : '#2c3d60'; b.lineWidth = isJP ? 1.2 : .6; b.stroke();
+  }
+}
+function resize(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = Math.max(320, Math.floor(rect.width)); H = Math.round(W * (LAT_MAX - LAT_MIN) / 360);
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.height = H + 'px';
+  renderBase();
+}
+
+/* ── 粒子（矢印）とパルス ─────────────────────────── */
+function colorOf(type){ return getComputedStyle(document.documentElement).getPropertyValue(`--${type}`).trim(); }
+function spawn(){
+  const c = pickCountry(); if (!c) return;
+  const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0)) return;
+  const type = pickType();
+  const src = proj(geo[2] + (Math.random() - .5) * 2, geo[1] + (Math.random() - .5) * 2);
+  const dst = proj(JP_LL[0] + (Math.random() - .5) * 1.2, JP_LL[1] + (Math.random() - .5) * 1.2);
+  const dx = dst[0] - src[0], dy = dst[1] - src[1], dist = Math.hypot(dx, dy);
+  const ctrl = [(src[0] + dst[0]) / 2 - dy * .18, (src[1] + dst[1]) / 2 - Math.max(18, dist * .28) + dx * .05];
+  const now = performance.now();
+  state.particles.push({src, dst, ctrl, type, t0: now, dur: 1400 + Math.min(1800, dist * 2.2) + Math.random() * 400, code: c.code});
+  if (state.particles.length > 220) state.particles.splice(0, state.particles.length - 220);
+  pushFeed({code: c.code, name: c.name, type, time: new Date()});
+}
+function bez(p, t){
+  const u = 1 - t;
+  return [u * u * p.src[0] + 2 * u * t * p.ctrl[0] + t * t * p.dst[0], u * u * p.src[1] + 2 * u * t * p.ctrl[1] + t * t * p.dst[1]];
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  if (!mapReady) return;
+  const dt = state.lastTick ? Math.min(100, now - state.lastTick) : 16; state.lastTick = now;
+  if (!state.paused && !document.hidden){
+    state.acc += dt / 1000 * settings.rate / 60;
+    let n = 0; while (state.acc >= 1 && n < 10){ spawn(); state.acc -= 1; n++; }
+    if (state.acc > 10) state.acc = 0;
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  // 太平洋中心に並べ替えて基図を 2 回描く
+  const off = -LON0 / 360 * W;
+  if (base){ ctx.drawImage(base, off, 0, W, H); ctx.drawImage(base, off + W, 0, W, H); }
+
+  // 送信元の点（シェアに比例）
+  const jp = proj(JP_LL[0], JP_LL[1]);
+  for (const c of state.list){
+    const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0) || c.code === 'JP') continue;
+    const [x, y] = proj(geo[2], geo[1]);
+    const r = 2 + Math.sqrt(c.share) * 1.4;
+    const hl = state.hoverCode === c.code;
+    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fillStyle = hl ? 'rgba(245,210,122,.35)' : 'rgba(245,210,122,.12)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = hl ? '#fff1c2' : 'rgba(245,210,122,.85)'; ctx.fill();
+    c._xy = [x, y, r];
+  }
+
+  // 粒子
+  if (!state.paused){
+    const alive = [];
+    for (const p of state.particles){
+      const t = (now - p.t0) / p.dur;
+      if (t >= 1){ state.pulses.push({x: p.dst[0], y: p.dst[1], t0: now, type: p.type}); continue; }
+      alive.push(p);
+      const col = colorOf(p.type);
+      const tail = Math.max(0, t - .22), steps = 14;
+      ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      let prev = bez(p, tail);
+      for (let i = 1; i <= steps; i++){
+        const tt = tail + (t - tail) * i / steps, pt = bez(p, tt);
+        ctx.globalAlpha = (i / steps) * .85;
+        ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(pt[0], pt[1]); ctx.stroke();
+        prev = pt;
+      }
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(prev[0], prev[1], 2.2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    }
+    state.particles = alive;
+    const keep = [];
+    for (const q of state.pulses){
+      const t = (now - q.t0) / 900; if (t >= 1) continue; keep.push(q);
+      ctx.globalAlpha = (1 - t) * .8; ctx.strokeStyle = colorOf(q.type); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(q.x, q.y, 3 + t * 26, 0, Math.PI * 2); ctx.stroke();
+    }
+    state.pulses = keep; ctx.globalAlpha = 1;
+  } else {
+    for (const p of state.particles){ const t = Math.min(1, (now - p.t0) / p.dur); const pt = bez(p, t); ctx.globalAlpha = .6; ctx.fillStyle = colorOf(p.type); ctx.beginPath(); ctx.arc(pt[0], pt[1], 2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+
+  // 標的: 日本
+  ctx.beginPath(); ctx.arc(jp[0], jp[1], 5, 0, Math.PI * 2); ctx.fillStyle = '#f5d27a'; ctx.fill();
+  ctx.beginPath(); ctx.arc(jp[0], jp[1], 9, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(245,210,122,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.font = `600 ${Math.max(11, W / 80)}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillStyle = '#f5d27a'; ctx.textBaseline = 'middle';
+  ctx.fillText('日本 JAPAN', jp[0] + 14, jp[1] - 2);
+}
+
+/* ── ホバー ─────────────────────────── */
+const tip = $('#tip');
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  let best = null, bd = 14;
+  for (const c of state.list){ if (!c._xy) continue; const d = Math.hypot(c._xy[0] - mx, c._xy[1] - my) - c._xy[2]; if (d < bd){ bd = d; best = c; } }
+  state.hoverCode = best ? best.code : null;
+  document.querySelectorAll('#rank tbody tr').forEach(tr => tr.classList.toggle('hl', tr.dataset.code === state.hoverCode));
+  if (best){
+    const rank = state.list.indexOf(best) + 1;
+    tip.innerHTML = `<b>${flag(best.code)} ${nameOf(best.code, best.name)}</b><div class="v">#${rank} · シェア ${fmtPct(best.share)}%</div>`;
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(W - tw - 6, Math.max(6, mx + 14)) + 'px';
+    tip.style.top = Math.max(6, my - th - 10) + 'px';
+  } else tip.style.display = 'none';
+});
+canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; state.hoverCode = null; document.querySelectorAll('#rank tbody tr.hl').forEach(tr => tr.classList.remove('hl')); });
+
+/* ════════════════════════════════════════════════════════════════════
+   UI 描画
+   ════════════════════════════════════════════════════════════════════ */
+function loadPrev(){ try { return JSON.parse(localStorage.getItem(TREND_KEY) || '{}'); } catch { return {}; } }
+function trendKey(){ const s = state.snapshot; return s ? `${s.provider || s.label}|${s.dateRange || ''}|${state.view}` : ''; }
+function recordTrend(){
+  const s = state.snapshot; if (!s || s.kind === 'demo') return;
+  const prev = loadPrev(); const key = trendKey();
+  const stamp = s.generatedAt ? s.generatedAt.toISOString() : new Date().toISOString();
+  const cur = prev[key];
+  if (cur && cur.stamp === stamp) return; // 同じスナップショットなら更新しない
+  prev[key] = {stamp, prev: cur ? cur.shares : null, shares: Object.fromEntries(state.list.map(x => [x.code, x.share]))};
+  try { localStorage.setItem(TREND_KEY, JSON.stringify(prev)); } catch {}
+}
+function renderRanking(){
+  const tbody = $('#rank tbody'); const snap = state.snapshot;
+  const prevEntry = loadPrev()[trendKey()]; const prev = prevEntry && prevEntry.prev;
+  const max = state.list.length ? state.list[0].share : 1;
+  tbody.innerHTML = state.list.map((c, i) => {
+    let trend = '<span class="trend">—</span>';
+    if (prev && snap.kind !== 'demo'){
+      const p = prev[c.code];
+      if (p == null) trend = '<span class="trend up">NEW</span>';
+      else { const d = c.share - p; const cls = d > .05 ? 'up' : d < -.05 ? 'down' : ''; trend = `<span class="trend ${cls}">${d > 0 ? '▲' : d < 0 ? '▼' : '±'}${Math.abs(d).toFixed(1)}</span>`; }
+    }
+    return `<tr data-code="${c.code}"><td class="c">${i + 1}</td><td><span class="flag">${flag(c.code)}</span>${nameOf(c.code, c.name)}</td>
+      <td class="barwrap"><div class="bar" style="width:${Math.max(2, c.share / max * 100)}%"></div></td>
+      <td class="n">${fmtPct(c.share)}</td><td class="n">${trend}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--muted)">データがありません</td></tr>';
+  tbody.querySelectorAll('tr').forEach(tr => {
+    tr.addEventListener('mouseenter', () => { state.hoverCode = tr.dataset.code; });
+    tr.addEventListener('mouseleave', () => { if (state.hoverCode === tr.dataset.code) state.hoverCode = null; });
+  });
+  const viewName = {all:'L7 と L3/4 の平均', l7:'L7 HTTP DDoS', l3:'L3/4 DDoS'}[state.view];
+  const has = snap ? [snap.l7 && 'L7', snap.l3 && 'L3/4'].filter(Boolean).join('・') : '';
+  $('#rankSub').textContent = snap ? `${viewName}${snap.dateRange ? ' · ' + rangeLabel(snap.dateRange) : ''}` : '';
+  $('#rankFoot').textContent = snap ? (snap.kind === 'demo'
+    ? '参考値: 公開レポートの傾向を基にした概算ウェイトです。実測値ではありません。'
+    : `日本を標的とする攻撃の送信元シェア（取得データ: ${has}）。IP の地理情報に基づくもので、踏み台経由の通信を含みます。`) : '';
+}
+function rangeLabel(r){ return {'1h':'直近1時間','6h':'直近6時間','1d':'直近24時間','7d':'直近7日','14d':'直近14日','28d':'直近28日'}[r] || r; }
+function renderTiles(){
+  const l = state.list, snap = state.snapshot;
+  $('#tRate').textContent = settings.rate;
+  $('#tRateS').textContent = snap && snap.kind === 'demo' ? 'デモ: 演出用のイベント頻度' : '演出用（実測の件数ではありません）';
+  $('#tCountries').textContent = l.length ? l.length : '—';
+  $('#tCountriesS').textContent = snap && snap.kind !== 'demo' ? '上位の送信元のみ取得' : 'ランキング掲載数';
+  if (l.length){
+    $('#tTop').textContent = fmtPct(l[0].share) + '%'; $('#tTopS').textContent = `${flag(l[0].code)} ${nameOf(l[0].code, l[0].name)}`;
+    const t3 = l.slice(0, 3).reduce((s, x) => s + x.share, 0);
+    $('#tTop3').textContent = fmtPct(t3) + '%'; $('#tTop3S').textContent = l.slice(0, 3).map(x => flag(x.code)).join(' ');
+  } else { $('#tTop').textContent = $('#tTop3').textContent = '—'; $('#tTopS').textContent = $('#tTop3S').textContent = '—'; }
+}
+function renderStatus(){
+  const snap = state.snapshot, chip = $('#srcChip'), txt = $('#srcText');
+  chip.className = 'chip';
+  if (!snap){ txt.textContent = '初期化中…'; return; }
+  if (snap.kind === 'demo'){ chip.classList.add('demo'); txt.textContent = snap.fallback ? 'DEMO（ライブ取得に失敗）' : 'DEMO · 参考値'; }
+  else if (snap.stale){ chip.classList.add('stale'); txt.textContent = `LIVE（${FILE_FRESH_HOURS}時間以上更新なし）`; }
+  else { chip.classList.add('live'); txt.textContent = `LIVE · ${snap.label}`; }
+  const when = snap.generatedAt || (snap.kind === 'demo' ? null : new Date());
+  $('#updText').textContent = when ? `データ時刻 ${fmtDateTime(when)} JST` : '最終更新 —';
+  $('#mapNote').textContent = snap.kind === 'demo' ? '表示はデモ（参考値）です。設定からライブデータを有効化できます。' : `出典: ${snap.provider === 'cloudflare-radar' ? 'Cloudflare Radar' : snap.label} · 矢印はシェアに比例した演出`;
+  const msg = $('#msg');
+  const lines = [];
+  if (snap.tried && snap.tried.length) lines.push('試行結果:\n  ' + snap.tried.join('\n  '));
+  if (snap.errors && snap.errors.length) lines.push('取得時の警告:\n  ' + snap.errors.join('\n  '));
+  msg.textContent = lines.join('\n');
+  msg.className = 'msg' + (snap.fallback ? ' err' : '');
+}
+function pushFeed(ev){
+  state.feed.unshift(ev); if (state.feed.length > 40) state.feed.length = 40;
+  const ul = $('#feed');
+  const li = document.createElement('li');
+  const ports = DEMO_PORTS[ev.type]; const port = ports[Math.floor(Math.random() * ports.length)];
+  li.innerHTML = `<span class="t">${fmtTime(ev.time)}</span><span class="who">${flag(ev.code)} ${nameOf(ev.code, ev.name)} → 🇯🇵 日本 <span style="color:var(--muted)">· ${port}</span></span><span class="ty ${ev.type}">${TYPE_LABEL[ev.type]}</span>`;
+  ul.prepend(li);
+  while (ul.children.length > 40) ul.lastChild.remove();
+}
+
+/* ── スパークライン（L7 時系列） ─────────────────────────── */
+const spark = $('#spark'), sctx = spark.getContext('2d');
+let sparkPts = [];
+function drawSpark(hoverX){
+  const s = state.snapshot && state.snapshot.series; const wrap = $('#sparkWrap');
+  if (!s || !s.values || s.values.filter(v => v != null).length < 2){ wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const rect = spark.getBoundingClientRect(); const w = Math.max(100, rect.width), h = 84; const d = Math.min(2, window.devicePixelRatio || 1);
+  spark.width = w * d; spark.height = h * d; sctx.setTransform(d, 0, 0, d, 0, 0); sctx.clearRect(0, 0, w, h);
+  const vals = s.values.map(v => v == null ? 0 : v); const max = Math.max(...vals) || 1;
+  const px = 6, py = 8, iw = w - px * 2, ih = h - py * 2;
+  sparkPts = vals.map((v, i) => [px + i / (vals.length - 1) * iw, py + ih - v / max * ih]);
+  sctx.strokeStyle = '#243150'; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(px, py + ih); sctx.lineTo(px + iw, py + ih); sctx.stroke();
+  const grad = sctx.createLinearGradient(0, py, 0, py + ih); grad.addColorStop(0, 'rgba(57,135,229,.35)'); grad.addColorStop(1, 'rgba(57,135,229,0)');
+  sctx.beginPath(); sparkPts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.lineTo(px + iw, py + ih); sctx.lineTo(px, py + ih); sctx.closePath(); sctx.fillStyle = grad; sctx.fill();
+  sctx.beginPath(); sparkPts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.strokeStyle = '#3987e5'; sctx.lineWidth = 2; sctx.lineJoin = 'round'; sctx.stroke();
+  const tipEl = $('#sparkTip');
+  if (hoverX != null){
+    let bi = 0; sparkPts.forEach((p, i) => { if (Math.abs(p[0] - hoverX) < Math.abs(sparkPts[bi][0] - hoverX)) bi = i; });
+    const [x, y] = sparkPts[bi];
+    sctx.strokeStyle = '#6f7d99'; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(x, py); sctx.lineTo(x, py + ih); sctx.stroke();
+    sctx.beginPath(); sctx.arc(x, y, 4, 0, Math.PI * 2); sctx.fillStyle = '#3987e5'; sctx.fill(); sctx.strokeStyle = '#111a2c'; sctx.lineWidth = 2; sctx.stroke();
+    const ts = s.timestamps[bi] ? fmtDateTime(new Date(s.timestamps[bi])) : `#${bi + 1}`;
+    tipEl.textContent = `${ts}  ${(vals[bi] / max * 100).toFixed(0)}%（最大比）`; tipEl.style.display = 'block';
+  } else tipEl.style.display = 'none';
+}
+spark.addEventListener('mousemove', (e) => { const r = spark.getBoundingClientRect(); drawSpark(e.clientX - r.left); });
+spark.addEventListener('mouseleave', () => drawSpark());
+
+/* ════════════════════════════════════════════════════════════════════
+   更新スケジューラ・イベント
+   ════════════════════════════════════════════════════════════════════ */
+async function refresh(){
+  $('#srcText').textContent = '取得中…';
+  const snap = await loadSnapshot();
+  state.snapshot = snap;
+  rebuildList(); recordTrend(); renderRanking(); renderStatus();
+}
+function schedule(){
+  if (state.timer) clearInterval(state.timer);
+  state.timer = setInterval(() => { if (!document.hidden) refresh(); }, Math.max(1, settings.interval) * 60e3);
+}
+document.querySelectorAll('.seg [data-view]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg [data-view]').forEach(x => x.classList.toggle('on', x === b));
+  state.view = b.dataset.view; rebuildList(); recordTrend(); renderRanking();
+}));
+$('#pauseBtn').addEventListener('click', () => { state.paused = !state.paused; $('#pauseBtn').textContent = state.paused ? '▶ 再生' : '⏸ 停止'; });
+$('#sRate').addEventListener('input', () => { $('#sRateV').textContent = `現在 ${$('#sRate').value} 件/分`; settings.rate = Number($('#sRate').value); renderTiles(); });
+$('#saveBtn').addEventListener('click', async () => { settings = readForm(); saveSettings(settings); schedule(); await refresh(); });
+$('#reloadBtn').addEventListener('click', refresh);
+$('#clearBtn').addEventListener('click', () => { try { localStorage.removeItem(SETTINGS_KEY); localStorage.removeItem(TREND_KEY); } catch {} settings = {...DEFAULTS}; fillForm(); schedule(); refresh(); });
+document.addEventListener('visibilitychange', () => { state.lastTick = 0; state.acc = 0; });
+window.addEventListener('resize', () => { resize(); drawSpark(); });
+setInterval(() => { $('#clock').textContent = fmtTime(new Date()) + ' JST'; }, 500);
+
+(async function init(){
+  fillForm();
+  resize();
+  requestAnimationFrame(frame);
+  const [world] = await Promise.all([loadWorld(), refresh()]);
+  polys = world;
+  if (!polys) $('#mapMsg').textContent = '地図の輪郭データを読み込めませんでした（経緯線のみ表示）。';
+  else $('#mapMsg').remove();
+  renderBase();
+  mapReady = true;
+  schedule();
+})();
+</script>
+</body>
+</html>

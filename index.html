@@ -50,6 +50,10 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .brand h1{font-family:var(--serif);font-weight:600;color:#f2ecd9;font-size:22px;letter-spacing:.14em}
 .brand h1 .mark{color:var(--gilt-lt)}
 .brand .sub{color:#c9c2a6;font-size:11px;letter-spacing:.32em;text-transform:uppercase}
+.sitelinks{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 10px 0;font-size:12px}
+.sitelinks .lbl{color:#c9c2a6;letter-spacing:.2em;font-size:10.5px;text-transform:uppercase}
+.sitelinks a{color:#e9e2c8;text-decoration:none;border:1px solid #ffffff2e;background:#ffffff12;border-radius:999px;padding:4px 12px;transition:background .12s}
+.sitelinks a:hover{background:#ffffff22}
 .storechip{margin-left:auto;align-self:center;font-size:10.5px;letter-spacing:.06em;border-radius:999px;padding:3px 11px;border:1px solid transparent;white-space:nowrap}
 .storechip.ws{color:#dff0e2;background:#ffffff14;border-color:#ffffff2e}
 .storechip.ls{color:#f3ecd2;background:#ffffff10;border-color:#ffffff24}
@@ -437,7 +441,7 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
 }
 @media print{
   body{background:#fff;padding:0}
-  .tabs,.brand,.datebar .nav,.addbar,.apptform,.tacts,.guide,.legend,.rockadd,.addrole,.seg,.uassign,.goaladd,.roleadd,.noteTools,#jMore,#toast,#pop,.dangerzone{display:none!important}
+  .tabs,.brand,.sitelinks,.datebar .nav,.addbar,.apptform,.tacts,.guide,.legend,.rockadd,.addrole,.seg,.uassign,.goaladd,.roleadd,.noteTools,#jMore,#toast,#pop,.dangerzone{display:none!important}
   .page{box-shadow:none;min-height:auto}
   .page::before{display:none}
 }
@@ -693,6 +697,10 @@ h2.sec small{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);font
       </div>
     </section>
   </main>
+  <nav class="sitelinks" aria-label="ほかのページ">
+    <span class="lbl">ほかのページ</span>
+    <a href="attack-map/">🌐 日本へのサイバー攻撃マップ</a>
+  </nav>
 </div>
 
 <div id="pop" role="menu"></div>
