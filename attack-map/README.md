@@ -1,0 +1,92 @@
+# 日本へのサイバー攻撃マップ
+
+日本を標的（宛先）とするサイバー攻撃の**送信元 国・地域**を、太平洋中心の世界地図上に
+リアルタイム風のアニメーションとランキングで表示する単一 HTML ページです。
+ビルド不要で、GitHub Pages にそのまま置けます。
+
+- ページ: `attack-map/index.html`（公開 URL の例: `https://<user>.github.io/<repo>/attack-map/`）
+- 地図・ランキング・ライブフィード・スパークライン（L7 攻撃量の推移）・設定パネルを含みます
+
+## データの意味
+
+| 項目 | 内容 |
+|---|---|
+| 国別シェア | Cloudflare Radar の「日本を標的とする L7 HTTP DDoS / L3-4 DDoS の上位送信元国」（%） |
+| 矢印・フィード | 上記シェアに比例してランダム生成する**演出**。1 本＝1 件の実攻撃ではない |
+| 「国」 | 送信元 IP の地理情報。ボットネットや踏み台経由の通信を含み、国家や国民が攻撃者という意味ではない |
+| デモ表示 | 公開レポート（NICTER など）の傾向を参考にした**概算の参考値**。実測値ではない |
+
+## ライブデータを有効にする（3 通り）
+
+どれも Cloudflare の無料アカウントと、**Account → Radar: Read** 権限の API トークンが必要です
+（Cloudflare ダッシュボード → My Profile → API Tokens → Create Token）。
+
+### A. GitHub Actions（推奨・トークンを公開しない）
+
+1. リポジトリの **Settings → Secrets and variables → Actions** に `CLOUDFLARE_API_TOKEN` を登録
+2. `.github/workflows/attack-map-feed.yml` が毎時 `attack-map/data/latest.json` を更新してコミットします
+   （**Actions** タブから `attack-map feed` を手動実行して初回データを作れます）
+3. ページは既定（「自動」）でこのファイルを最初に読みます。3 時間以上古い場合は「更新なし」表示になります
+
+### B. Cloudflare Worker プロキシ（数分単位で更新したい場合）
+
+```sh
+cd attack-map/worker
+npx wrangler deploy
+npx wrangler secret put CLOUDFLARE_API_TOKEN
+# 任意: 許可するオリジンを絞る
+npx wrangler secret put ALLOWED_ORIGIN   # 例 https://<user>.github.io
+```
+
+ページの「⚙ データソース設定」で **プロキシ URL** に `https://<worker>.workers.dev/` を入力して保存します。
+
+### C. ブラウザから直接呼ぶ
+
+設定パネルの **Cloudflare API トークン** に入力すると、ブラウザの localStorage に保存して直接 API を呼びます。
+ブラウザの CORS 制限で失敗する場合は A または B を使ってください。トークンは他人と共有する端末では入力しないでください。
+
+## カスタム JSON
+
+独自のハニーポットや SIEM の集計を表示したい場合は、次のどちらかの形式の JSON を HTTPS（CORS 許可）で公開し、
+設定の **カスタム JSON URL** に指定します。
+
+```json
+{ "generatedAt": "2026-10-10T12:00:00Z",
+  "countries": [ { "code": "US", "share": 31.2 }, { "code": "CN", "count": 1200 } ] }
+```
+
+```json
+{ "generatedAt": "2026-10-10T12:00:00Z", "dateRange": "1d",
+  "l7": [ { "code": "US", "share": 31.2 } ],
+  "l3": [ { "code": "CN", "share": 18.5 } ],
+  "series": { "timestamps": ["2026-10-10T00:00:00Z"], "values": [0.42] } }
+```
+
+`share`（%）が無ければ `count` から構成比を計算します。`code` は ISO 3166-1 alpha-2 です。
+
+## ファイル構成
+
+```
+attack-map/
+  index.html              ページ本体（依存ライブラリなし）
+  data/latest.json        GitHub Actions が生成するスナップショット（初回実行後に出現）
+  data/countries-110m.json 地図の輪郭（world-atlas）。Actions が初回に保存。無ければ CDN から取得
+  scripts/radar-lib.mjs   Cloudflare Radar 取得・整形の共通ロジック
+  scripts/fetch-radar.mjs Actions / ローカル実行用 CLI
+  worker/radar-proxy.js   Cloudflare Worker プロキシ
+  worker/wrangler.toml
+.github/workflows/attack-map-feed.yml
+```
+
+ローカルで試す:
+
+```sh
+CLOUDFLARE_API_TOKEN=xxxx node attack-map/scripts/fetch-radar.mjs --out attack-map/data/latest.json --range 1d
+python3 -m http.server 8000   # http://localhost:8000/attack-map/
+```
+
+## 参考資料
+
+- NICT [NICTER 観測レポート 2025](https://www.nict.go.jp/press/2026/02/05-1.html) / [NICTER 観測統計](https://blog.nicter.jp/)
+- Cloudflare [Radar: Japan](https://radar.cloudflare.com/security?location=jp) / [Radar API](https://developers.cloudflare.com/radar/)
+- 総務省 [情報通信白書](https://www.soumu.go.jp/johotsusintokei/whitepaper/)
