@@ -377,7 +377,13 @@ const INDUSTRY_JA = {
   'business services':'ビジネスサービス','marketing & advertising':'マーケティング・広告','advertising':'広告','consulting':'コンサルティング','legal':'法務','real estate':'不動産',
   'nonprofit':'非営利','non-profit':'非営利','religion':'宗教','sports':'スポーツ','food & beverage':'食品・飲料','agriculture':'農業','construction':'建設',
   'consumer services':'消費者サービス','consumer electronics':'家電','electronics':'電子機器','adult':'アダルト','dating':'出会い系','social media':'SNS','social networks':'SNS',
-  'search engines':'検索エンジン','cybersecurity':'セキュリティ','computer & network security':'セキュリティ','other':'その他','unknown':'不明'
+  'search engines':'検索エンジン','cybersecurity':'セキュリティ','computer & network security':'セキュリティ','other':'その他','unknown':'不明',
+  'internet and telecom':'インターネット・通信','computer and electronics':'コンピュータ・電子機器','computers & electronics':'コンピュータ・電子機器',
+  'shopping & general merchandise':'ショッピング・小売','shopping':'ショッピング','professional services':'専門サービス','news, media, and publications':'ニュース・メディア・出版',
+  'games':'ゲーム','video games':'ゲーム','research':'研究','online media':'オンラインメディア','computer hardware':'ハードウェア','computer networking':'ネットワーク','information technology':'IT',
+  'arts & entertainment':'芸術・エンタメ','reference':'辞書・参考情報','science':'科学','jobs & education':'求人・教育','autos & vehicles':'自動車',
+  'home & garden':'住まい','beauty & fitness':'美容・健康','people & society':'社会','law & government':'法律・政府','books & literature':'書籍','pets & animals':'ペット・動物',
+  'food & drink':'食品・飲料','hobbies & leisure':'趣味・レジャー','online communities':'オンラインコミュニティ','real estate & construction':'不動産・建設','gambling & games':'ギャンブル・ゲーム'
 };
 function industryJa(name){
   const k = String(name || '').trim().toLowerCase();
@@ -385,7 +391,7 @@ function industryJa(name){
   const rules = [[/gam(bl|e)/,'ゲーム・ギャンブル'],[/financ|bank|insur|fintech/,'金融'],[/crypto/,'暗号資産'],[/telecom/,'通信'],[/internet|isp/,'インターネット'],[/government|public/,'政府・公共'],
     [/educat|school|universit/,'教育'],[/retail|commerce|shopping/,'小売・EC'],[/media|entertain|news|broadcast/,'メディア・エンタメ'],[/software|it |information technology|saas|technolog/,'IT・ソフトウェア'],
     [/health|medic|pharma|hospital/,'医療'],[/travel|tour|airline|hotel/,'旅行・観光'],[/transport|logist/,'運輸・物流'],[/manufactur|industr|automotive/,'製造'],[/energy|utilit|oil|gas/,'エネルギー'],
-    [/host|cloud|data ?center/,'ホスティング・クラウド'],[/market|advertis/,'マーケティング・広告'],[/business|consult|professional/,'ビジネスサービス'],[/real estate/,'不動産'],[/sport/,'スポーツ'],[/adult|dating/,'アダルト・出会い系'],[/secur/,'セキュリティ']];
+    [/host|cloud|data ?center/,'ホスティング・クラウド'],[/computer|electronic|hardware|network/,'コンピュータ・電子機器'],[/shopping|merchandise/,'ショッピング・小売'],[/market|advertis/,'マーケティング・広告'],[/business|consult|professional/,'ビジネスサービス'],[/real estate/,'不動産'],[/sport/,'スポーツ'],[/adult|dating/,'アダルト・出会い系'],[/secur/,'セキュリティ']];
   for (const [re, ja] of rules) if (re.test(k)) return ja;
   return null;
 }
@@ -884,18 +890,21 @@ function renderVictims(){
   }).join('');
   // 表示中のビューに合わせて L7 / L3 の内訳を選ぶ（無ければもう一方）
   const useL3 = state.view === 'l3';
-  const ind = (useL3 ? snap.industriesL3 : snap.industries) || snap.industries || snap.industriesL3;
-  const ver = (useL3 ? snap.verticalsL3 : snap.verticals) || snap.verticals || snap.verticalsL3;
+  let ind = (useL3 ? snap.industriesL3 : snap.industries) || snap.industries || snap.industriesL3;
+  let ver = (useL3 ? snap.verticalsL3 : snap.verticals) || snap.verticals || snap.verticalsL3;
+  // ライブデータに業種・分野がまだ無い場合（取得前の古いスナップショットなど）は参考値で埋める
+  let isRef = snap.kind === 'demo';
+  if (!ind && !ver){ ind = normNamed(DEMO_INDUSTRIES.map(([name, share]) => ({name, share}))); ver = normNamed(DEMO_VERTICALS.map(([name, share]) => ({name, share}))); isRef = true; }
   const layer = useL3 && snap.industriesL3 ? 'L3/4 DDoS' : 'L7 HTTP DDoS';
   let html = '';
-  if (ind && ind.length) html += `<h3>業種別 <small>${layer} の標的${snap.kind === 'demo' ? ' · 参考値' : ''}</small></h3>${rows(ind, ind[0].share || 1, 'ind')}`;
-  if (ver && ver.length) html += `<h3>分野別 <small>${layer} の標的${snap.kind === 'demo' ? ' · 参考値' : ''}</small></h3>${rows(ver, ver[0].share || 1, 'ver')}`;
+  if (ind && ind.length) html += `<h3>業種別 <small>${layer} の標的${isRef ? ' · 参考値' : ''}</small></h3>${rows(ind, ind[0].share || 1, 'ind')}`;
+  if (ver && ver.length) html += `<h3>分野別 <small>${layer} の標的${isRef ? ' · 参考値' : ''}</small></h3>${rows(ver, ver[0].share || 1, 'ver')}`;
   if (snap.targets && snap.targets.length){
     const meta = snap.targetsMeta || {};
     html += `<h3>標的ホスト <small>自分の管理ドメイン</small></h3>${rows(snap.targets, snap.targets[0].count || 1, 'host')}
       <div class="note">自分の Cloudflare ゾーンでブロック/チャレンジされたリクエスト数${meta.windowHours ? `（直近 ${meta.windowHours} 時間）` : ''}${meta.generatedAt ? ` · ${fmtDateTime(meta.generatedAt)} JST 集計` : ''}</div>`;
   }
-  if (snap.kind === 'demo') html += `<div class="note">業種・分野はデモの参考値です。Cloudflare Radar を有効にすると、日本で実際に攻撃を受けている業種・分野のシェアに置き換わります。</div>`;
+  if (isRef) html += `<div class="note">${snap.kind === 'demo' ? '業種・分野はデモの参考値です。Cloudflare Radar を有効にすると、日本で実際に攻撃を受けている業種・分野のシェアに置き換わります。' : '業種・分野はまだ参考値です。次回の自動更新で、日本で実際に攻撃を受けている業種・分野のシェアに置き換わります。'}</div>`;
   if (!snap.targets) html += `<div class="note">攻撃を受けた<b>個別の IP アドレスやドメイン</b>は被害者側が公表しないため公開データにありません。自分の管理ドメインへの攻撃は <code>CLOUDFLARE_ZONE_IDS</code> の設定、または カスタム JSON の <code>targets</code> で表示できます（README 参照）。</div>`;
   if (!html) html = `<div class="empty">業種・分野の内訳はまだ取得できていません。</div>`;
   el.innerHTML = html;
