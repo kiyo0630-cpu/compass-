@@ -3,5 +3,6 @@ data/
 *.csv
 *.zip
 *.parquet
-!results/*.csv
+# 検証結果も git に入れない（2026-10-13 に非公開の Google Drive へ移した。README「結果の置き場」参照）
+results/
 __pycache__/
