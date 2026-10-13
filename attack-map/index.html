@@ -66,9 +66,11 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items
 
 /* ── 地図 ─────────────────────────────── */
 .mapcard{position:relative;overflow:hidden;padding:0}
-#map{display:block;width:100%;height:auto;background:
+#map{display:block;width:100%;height:auto;touch-action:pan-y pinch-zoom;cursor:grab;background:
   radial-gradient(900px 500px at 70% 40%, #14203a 0%, transparent 70%), var(--bg)}
-.maptoolbar{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.maptoolbar{position:absolute;left:12px;top:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap}
+#map.dragging{cursor:grabbing}
+.mapcard.flat #spinSeg{display:none}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0f172acc;backdrop-filter:blur(4px)}
 .seg button{padding:5px 11px;font-size:12px;background:none;border:none;color:var(--text-2)}
 .seg button+button{border-left:1px solid var(--line)}
@@ -82,6 +84,13 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items
 .tip b{font-size:13px}
 .tip .v{font-family:var(--mono);color:var(--text-2)}
 .mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;pointer-events:none}
+/* 狭い画面では操作ボタンと凡例を地図の外（上下）に出して、地球儀を隠さない */
+@media (max-width:640px){
+  .maptoolbar{position:static;padding:10px 10px 4px}
+  .legend{position:static;margin:4px 10px 6px;border:none;background:none;padding:0 2px;gap:8px 12px}
+  .mapnote{position:static;max-width:none;text-align:left;padding:0 12px 10px}
+  .mapmsg{top:48px;bottom:60px}
+}
 
 /* ── 右パネル ─────────────────────────── */
 .panel{display:flex;flex-direction:column;gap:14px}
@@ -182,6 +191,16 @@ footer li{margin:2px 0}
       </div>
       <div class="seg" role="group" aria-label="アニメーション">
         <button id="pauseBtn" title="アニメーションを一時停止">⏸ 停止</button>
+      </div>
+      <div class="seg" role="group" aria-label="地図の種類">
+        <button data-mode="globe" class="on" title="回る地球儀">🌐 地球儀</button>
+        <button data-mode="flat" title="平面地図">🗺 平面</button>
+      </div>
+      <div class="seg" id="spinSeg" role="group" aria-label="地球儀の回転">
+        <button data-spin="orbit" class="on" title="ゆっくり一周する">↻ 一周</button>
+        <button data-spin="sway" title="日本が見える範囲で往復する">↔ 日本中心</button>
+        <button data-spin="off" title="回転しない（ドラッグで回せます）">固定</button>
+        <button id="toJapan" title="日本を正面にする">🎯 日本</button>
       </div>
     </div>
     <div class="legend" aria-label="凡例">
@@ -415,7 +434,7 @@ const fmtDateTime = (d) => d.toLocaleString('ja-JP', {hour12:false, timeZone:'As
 /* ════════════════════════════════════════════════════════════════════
    設定
    ════════════════════════════════════════════════════════════════════ */
-const DEFAULTS = {mode:'auto', token:'', proxy:'', custom:'', range:'1d', interval:5, rate:90};
+const DEFAULTS = {mode:'auto', token:'', proxy:'', custom:'', range:'1d', interval:5, rate:90, mapMode:'globe', spin:'orbit'};
 function loadSettings(){
   try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
   catch { return {...DEFAULTS}; }
@@ -637,10 +656,20 @@ function pickType(){
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   地図（TopoJSON を自前デコードし、太平洋中心の正距円筒図法で描く）
+   地図: 回る地球儀（正射図法）と平面地図（太平洋中心の正距円筒図法）。外部ライブラリなし
    ════════════════════════════════════════════════════════════════════ */
 const canvas = $('#map'), ctx = canvas.getContext('2d');
-let W = 0, H = 0, dpr = 1, base = null, polys = null, mapReady = false;
+let W = 0, H = 0, dpr = 1, base = null, stars = null, polys = null, polysXYZ = null, mapReady = false;
+const D2R = Math.PI / 180;
+const globe = {
+  mode: 'globe',            // 'globe' | 'flat'
+  lam: JP_LL[0], phi: 30,   // 視点の中心（経度・緯度、度）
+  spin: 'orbit',            // 'orbit' 一周 | 'sway' 日本中心に往復 | 'off'
+  speed: 3,                 // 度/秒
+  cx: 0, cy: 0, R: 0, t: 0,
+  drag: null, idleUntil: 0, flyTo: null
+};
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function decodeTopo(topo){
   const tr = topo.transform;
@@ -671,14 +700,35 @@ async function loadWorld(){
   for (const u of urls){ try { const r = await fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status); return decodeTopo(await r.json()); } catch (e){ console.warn('world map load failed', u, e); } }
   return null;
 }
+/* 地球儀用に各頂点を単位ベクトル（x,y,z）へ変換しておく。毎フレームは回転行列を掛けるだけ */
+function prepareGlobe(){
+  if (!polys) return;
+  polysXYZ = polys.map(p => ({id: p.id, rings: p.rings.map(r => {
+    const a = new Float32Array(r.length * 3);
+    r.forEach(([lon, lat], i) => { const cl = Math.cos(lat * D2R); a[i * 3] = cl * Math.cos(lon * D2R); a[i * 3 + 1] = cl * Math.sin(lon * D2R); a[i * 3 + 2] = Math.sin(lat * D2R); });
+    return a;
+  })}));
+}
+
+/* ── 投影 ─────────────────────────── */
 function baseX(lon){ return (lon + 180) / 360 * W; }
 function projY(lat){ return (LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * H; }
 function proj(lon, lat){ const l = ((lon - LON0 + 540) % 360) - 180; return [(l + 180) / 360 * W, projY(lat)]; }
+function ll2xyz(lon, lat){ const cl = Math.cos(lat * D2R); return [cl * Math.cos(lon * D2R), cl * Math.sin(lon * D2R), Math.sin(lat * D2R)]; }
+function rotM(){ const l = globe.lam * D2R, p = globe.phi * D2R; return {cl: Math.cos(l), sl: Math.sin(l), cp: Math.cos(p), sp: Math.sin(p)}; }
+/* 単位ベクトル → [画面x, 画面y, 奥行き]。奥行き > 0 が手前（可視）。lift は地表からの高さ（半径比） */
+function projXYZ(x, y, z, m, lift = 0){
+  const x1 = x * m.cl + y * m.sl, y1 = -x * m.sl + y * m.cl;
+  const x2 = x1 * m.cp + z * m.sp, z2 = -x1 * m.sp + z * m.cp;
+  const r = globe.R * (1 + lift);
+  return [globe.cx + r * y1, globe.cy - r * z2, x2];
+}
+function projLL(lon, lat, m, lift){ const v = ll2xyz(lon, lat); return projXYZ(v[0], v[1], v[2], m, lift); }
 
+/* ── 平面地図の基図（一度だけ描く） ─────────────────────────── */
 function renderBase(){
   base = document.createElement('canvas'); base.width = Math.round(W * dpr); base.height = Math.round(H * dpr);
   const b = base.getContext('2d'); b.scale(dpr, dpr);
-  // 経緯線
   b.strokeStyle = '#18233a'; b.lineWidth = 1;
   for (let lon = -180; lon <= 180; lon += 30){ b.beginPath(); b.moveTo(baseX(lon), 0); b.lineTo(baseX(lon), H); b.stroke(); }
   for (let lat = -60; lat <= 80; lat += 20){ b.beginPath(); b.moveTo(0, projY(lat)); b.lineTo(W, projY(lat)); b.stroke(); }
@@ -689,18 +739,51 @@ function renderBase(){
     const isJP = p.id === '392';
     b.beginPath();
     for (const r of p.rings){ r.forEach(([lon, lat], i) => { const x = baseX(lon), y = projY(lat); i ? b.lineTo(x, y) : b.moveTo(x, y); }); b.closePath(); }
-    b.fillStyle = isJP ? '#3a3a2a' : getComputedStyle(document.documentElement).getPropertyValue('--land').trim() || '#1b2942';
+    b.fillStyle = isJP ? '#3a3a2a' : '#1b2942';
     b.fill('evenodd');
     b.strokeStyle = isJP ? '#f5d27a' : '#2c3d60'; b.lineWidth = isJP ? 1.2 : .6; b.stroke();
   }
 }
+function renderStars(){
+  stars = document.createElement('canvas'); stars.width = Math.round(W * dpr); stars.height = Math.round(H * dpr);
+  const b = stars.getContext('2d'); b.scale(dpr, dpr);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const n = Math.round(W * H / 2600);
+  for (let i = 0; i < n; i++){ const x = rnd() * W, y = rnd() * H, r = rnd() * 1.1 + .2; b.globalAlpha = .25 + rnd() * .55; b.fillStyle = rnd() < .15 ? '#cfe0ff' : '#ffffff'; b.beginPath(); b.arc(x, y, r, 0, Math.PI * 2); b.fill(); }
+  b.globalAlpha = 1;
+}
 function resize(){
   const rect = canvas.parentElement.getBoundingClientRect();
-  W = Math.max(320, Math.floor(rect.width)); H = Math.round(W * (LAT_MAX - LAT_MIN) / 360);
+  W = Math.max(320, Math.floor(rect.width));
   dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (globe.mode === 'globe'){
+    H = W < 640 ? Math.round(W * .98) : Math.round(W * .68);
+    globe.R = Math.min(W / 2 - 14, H / 2 - 26); globe.cx = W / 2; globe.cy = H / 2 + 10;
+    renderStars();
+  } else {
+    H = Math.round(W * (LAT_MAX - LAT_MIN) / 360);
+    renderBase();
+  }
   canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   canvas.style.height = H + 'px';
-  renderBase();
+  state.particles = []; state.pulses = [];
+}
+function setMapMode(mode){
+  globe.mode = mode === 'flat' ? 'flat' : 'globe';
+  settings.mapMode = globe.mode; saveSettings(settings);
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === globe.mode));
+  canvas.parentElement.classList.toggle('flat', globe.mode === 'flat');
+  resize();
+}
+function setSpin(spin){
+  globe.spin = ['orbit', 'sway', 'off'].includes(spin) ? spin : 'orbit';
+  settings.spin = globe.spin; saveSettings(settings);
+  document.querySelectorAll('[data-spin]').forEach(b => b.classList.toggle('on', b.dataset.spin === globe.spin));
+  if (globe.spin === 'sway') globe.t = 0;
+}
+function flyToJapan(){
+  const now = performance.now();
+  globe.flyTo = {t0: now, dur: 900, lam0: globe.lam, phi0: globe.phi, lam1: JP_LL[0], phi1: 32};
 }
 
 /* ── 粒子（矢印）とパルス ─────────────────────────── */
@@ -709,12 +792,22 @@ function spawn(){
   const c = pickCountry(); if (!c) return;
   const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0)) return;
   const type = pickType();
-  const src = proj(geo[2] + (Math.random() - .5) * 2, geo[1] + (Math.random() - .5) * 2);
-  const dst = proj(JP_LL[0] + (Math.random() - .5) * 1.2, JP_LL[1] + (Math.random() - .5) * 1.2);
-  const dx = dst[0] - src[0], dy = dst[1] - src[1], dist = Math.hypot(dx, dy);
-  const ctrl = [(src[0] + dst[0]) / 2 - dy * .18, (src[1] + dst[1]) / 2 - Math.max(18, dist * .28) + dx * .05];
+  const sLL = [geo[2] + (Math.random() - .5) * 2, geo[1] + (Math.random() - .5) * 2];
+  const dLL = [JP_LL[0] + (Math.random() - .5) * 1.2, JP_LL[1] + (Math.random() - .5) * 1.2];
   const now = performance.now();
-  state.particles.push({src, dst, ctrl, type, t0: now, dur: 1400 + Math.min(1800, dist * 2.2) + Math.random() * 400, code: c.code});
+  const p = {type, t0: now, code: c.code, sLL, dLL};
+  if (globe.mode === 'globe'){
+    p.a = ll2xyz(sLL[0], sLL[1]); p.b = ll2xyz(dLL[0], dLL[1]);
+    p.omega = Math.acos(Math.max(-1, Math.min(1, p.a[0] * p.b[0] + p.a[1] * p.b[1] + p.a[2] * p.b[2]))) || 1e-4;
+    p.lift = .05 + .28 * (p.omega / Math.PI);
+    p.dur = 1600 + p.omega / Math.PI * 2600 + Math.random() * 400;
+  } else {
+    const src = proj(sLL[0], sLL[1]), dst = proj(dLL[0], dLL[1]);
+    const dx = dst[0] - src[0], dy = dst[1] - src[1], dist = Math.hypot(dx, dy);
+    p.src = src; p.dst = dst; p.ctrl = [(src[0] + dst[0]) / 2 - dy * .18, (src[1] + dst[1]) / 2 - Math.max(18, dist * .28) + dx * .05];
+    p.dur = 1400 + Math.min(1800, dist * 2.2) + Math.random() * 400;
+  }
+  state.particles.push(p);
   if (state.particles.length > 220) state.particles.splice(0, state.particles.length - 220);
   pushFeed({code: c.code, name: c.name, type, time: new Date()});
 }
@@ -722,6 +815,162 @@ function bez(p, t){
   const u = 1 - t;
   return [u * u * p.src[0] + 2 * u * t * p.ctrl[0] + t * t * p.dst[0], u * u * p.src[1] + 2 * u * t * p.ctrl[1] + t * t * p.dst[1]];
 }
+/* 大円に沿った点（高さ付き）。戻り値 [x, y, 可視か] */
+function arcPt(p, t, m){
+  const so = Math.sin(p.omega), ka = Math.sin((1 - t) * p.omega) / so, kb = Math.sin(t * p.omega) / so;
+  const x = ka * p.a[0] + kb * p.b[0], y = ka * p.a[1] + kb * p.b[1], z = ka * p.a[2] + kb * p.b[2];
+  const lift = p.lift * Math.sin(Math.PI * t);
+  const q = projXYZ(x, y, z, m, lift);
+  return [q[0], q[1], q[2] > -lift * .9];
+}
+function drawParticles(now, m){
+  const isGlobe = globe.mode === 'globe';
+  if (state.paused){
+    for (const p of state.particles){
+      const t = Math.min(1, (now - p.t0) / p.dur);
+      const pt = isGlobe ? arcPt(p, t, m) : [...bez(p, t), true];
+      if (!pt[2]) continue;
+      ctx.globalAlpha = .6; ctx.fillStyle = colorOf(p.type); ctx.beginPath(); ctx.arc(pt[0], pt[1], 2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1; return;
+  }
+  const alive = [];
+  for (const p of state.particles){
+    const t = (now - p.t0) / p.dur;
+    if (t >= 1){ state.pulses.push({lon: p.dLL[0], lat: p.dLL[1], xy: p.dst || null, t0: now, type: p.type}); continue; }
+    alive.push(p);
+    const col = colorOf(p.type);
+    const tail = Math.max(0, t - .22), steps = 14;
+    ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.strokeStyle = col;
+    let prev = isGlobe ? arcPt(p, tail, m) : [...bez(p, tail), true];
+    for (let i = 1; i <= steps; i++){
+      const tt = tail + (t - tail) * i / steps;
+      const pt = isGlobe ? arcPt(p, tt, m) : [...bez(p, tt), true];
+      if (prev[2] && pt[2]){ ctx.globalAlpha = (i / steps) * .85; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(pt[0], pt[1]); ctx.stroke(); }
+      prev = pt;
+    }
+    ctx.globalAlpha = 1;
+    if (prev[2]){ ctx.beginPath(); ctx.arc(prev[0], prev[1], 2.2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); }
+  }
+  state.particles = alive;
+  const keep = [];
+  for (const q of state.pulses){
+    const t = (now - q.t0) / 900; if (t >= 1) continue; keep.push(q);
+    let x, y;
+    if (isGlobe){ const r = projLL(q.lon, q.lat, m); if (r[2] <= 0) continue; x = r[0]; y = r[1]; }
+    else { if (!q.xy) continue; x = q.xy[0]; y = q.xy[1]; }
+    ctx.globalAlpha = (1 - t) * .8; ctx.strokeStyle = colorOf(q.type); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, 3 + t * 26, 0, Math.PI * 2); ctx.stroke();
+  }
+  state.pulses = keep; ctx.globalAlpha = 1;
+}
+function drawDot(x, y, r, c, depth){
+  const hl = state.hoverCode === c.code;
+  const fade = depth == null ? 1 : Math.min(1, .35 + depth);
+  ctx.globalAlpha = fade;
+  ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fillStyle = hl ? 'rgba(245,210,122,.35)' : 'rgba(245,210,122,.12)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = hl ? '#fff1c2' : 'rgba(245,210,122,.85)'; ctx.fill();
+  ctx.globalAlpha = 1;
+}
+function drawJapan(x, y){
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = '#f5d27a'; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(245,210,122,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.font = `600 ${Math.max(11, W / 80)}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillStyle = '#f5d27a'; ctx.textBaseline = 'middle';
+  ctx.fillText('日本 JAPAN', x + 14, y - 2);
+}
+
+/* ── 平面地図のフレーム ─────────────────────────── */
+function drawFlat(now){
+  const off = -LON0 / 360 * W;
+  if (base){ ctx.drawImage(base, off, 0, W, H); ctx.drawImage(base, off + W, 0, W, H); }
+  for (const c of state.list){
+    const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0) || c.code === 'JP'){ c._xy = null; continue; }
+    const [x, y] = proj(geo[2], geo[1]); const r = 2 + Math.sqrt(c.share) * 1.4;
+    drawDot(x, y, r, c, null); c._xy = [x, y, r];
+  }
+  drawParticles(now, null);
+  const jp = proj(JP_LL[0], JP_LL[1]); drawJapan(jp[0], jp[1]);
+}
+
+/* ── 地球儀のフレーム ─────────────────────────── */
+function stepRotation(now, dt){
+  if (globe.flyTo){
+    const f = globe.flyTo, k = Math.min(1, (now - f.t0) / f.dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    let dl = ((f.lam1 - f.lam0 + 540) % 360) - 180;
+    globe.lam = f.lam0 + dl * e; globe.phi = f.phi0 + (f.phi1 - f.phi0) * e;
+    if (k >= 1){ globe.flyTo = null; globe.idleUntil = now + 6000; if (globe.spin === 'sway') globe.t = 0; }
+    return;
+  }
+  if (globe.drag || now < globe.idleUntil || reduceMotion || state.paused) return;
+  const sec = dt / 1000;
+  if (globe.spin === 'orbit') globe.lam = ((globe.lam - globe.speed * sec + 540) % 360) - 180;
+  else if (globe.spin === 'sway'){ globe.t += sec; const A = 70, w = globe.speed / A; globe.lam = JP_LL[0] - A * Math.sin(globe.t * w); }
+}
+function ringPath(a, m){
+  const n = a.length / 3, pts = new Float32Array(n * 2); let vis = 0;
+  for (let i = 0; i < n; i++){
+    const x = a[i * 3], y = a[i * 3 + 1], z = a[i * 3 + 2];
+    const x1 = x * m.cl + y * m.sl, y1 = -x * m.sl + y * m.cl;
+    const x2 = x1 * m.cp + z * m.sp, z2 = -x1 * m.sp + z * m.cp;
+    if (x2 > 0){ vis++; pts[i * 2] = globe.cx + globe.R * y1; pts[i * 2 + 1] = globe.cy - globe.R * z2; }
+    else { const k = globe.R / (Math.hypot(y1, z2) || 1); pts[i * 2] = globe.cx + y1 * k; pts[i * 2 + 1] = globe.cy - z2 * k; } // 裏側の点は縁に貼り付ける
+  }
+  return vis ? pts : null;
+}
+function strokeGeoLine(fn, a, b, step, m){
+  ctx.beginPath(); let pen = false;
+  for (let v = a; v <= b + 1e-9; v += step){ const [lon, lat] = fn(v); const q = projLL(lon, lat, m); if (q[2] > 0){ pen ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); pen = true; } else pen = false; }
+  ctx.stroke();
+}
+function drawGlobe(now){
+  const m = rotM(), {cx, cy, R} = globe;
+  if (stars) ctx.drawImage(stars, 0, 0, W, H);
+  // 大気のにじみ
+  let g = ctx.createRadialGradient(cx, cy, R * .96, cx, cy, R * 1.14);
+  g.addColorStop(0, 'rgba(90,150,255,.32)'); g.addColorStop(.6, 'rgba(90,150,255,.08)'); g.addColorStop(1, 'rgba(90,150,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.14, 0, Math.PI * 2); ctx.fill();
+  // 海
+  g = ctx.createRadialGradient(cx - R * .38, cy - R * .38, R * .05, cx, cy, R);
+  g.addColorStop(0, '#1d3158'); g.addColorStop(.7, '#0e1a33'); g.addColorStop(1, '#070e1e');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+  // 経緯線
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1;
+  for (let lon = -180; lon < 180; lon += 30) strokeGeoLine(v => [lon, v], -85, 85, 2.5, m);
+  for (let lat = -60; lat <= 60; lat += 30) strokeGeoLine(v => [v, lat], -180, 180, 2.5, m);
+  // 陸地
+  if (polysXYZ){
+    ctx.lineJoin = 'round';
+    for (const p of polysXYZ){
+      const rings = p.rings.map(r => ringPath(r, m));
+      if (!rings.some(Boolean)) continue;
+      const isJP = p.id === '392';
+      ctx.beginPath();
+      for (const r of rings){ if (!r) continue; ctx.moveTo(r[0], r[1]); for (let i = 1; i < r.length / 2; i++) ctx.lineTo(r[i * 2], r[i * 2 + 1]); ctx.closePath(); }
+      ctx.fillStyle = isJP ? '#4a452c' : '#223455'; ctx.fill('evenodd');
+      ctx.strokeStyle = isJP ? '#f5d27a' : '#3a4f78'; ctx.lineWidth = isJP ? 1.3 : .7; ctx.stroke();
+    }
+  }
+  // 縁の陰影
+  g = ctx.createRadialGradient(cx, cy, R * .78, cx, cy, R);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = g; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  ctx.restore();
+  // 送信元の点
+  for (const c of state.list){
+    const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0) || c.code === 'JP'){ c._xy = null; continue; }
+    const q = projLL(geo[2], geo[1], m);
+    if (q[2] <= 0){ c._xy = null; continue; }
+    const r = 2 + Math.sqrt(c.share) * 1.4;
+    drawDot(q[0], q[1], r, c, q[2]); c._xy = [q[0], q[1], r];
+  }
+  drawParticles(now, m);
+  const jp = projLL(JP_LL[0], JP_LL[1], m);
+  if (jp[2] > 0) drawJapan(jp[0], jp[1]);
+  // 輪郭
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,235,.4)'; ctx.lineWidth = 1; ctx.stroke();
+}
+
 function frame(now){
   requestAnimationFrame(frame);
   if (!mapReady) return;
@@ -733,71 +982,22 @@ function frame(now){
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  // 太平洋中心に並べ替えて基図を 2 回描く
-  const off = -LON0 / 360 * W;
-  if (base){ ctx.drawImage(base, off, 0, W, H); ctx.drawImage(base, off + W, 0, W, H); }
-
-  // 送信元の点（シェアに比例）
-  const jp = proj(JP_LL[0], JP_LL[1]);
-  for (const c of state.list){
-    const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0) || c.code === 'JP') continue;
-    const [x, y] = proj(geo[2], geo[1]);
-    const r = 2 + Math.sqrt(c.share) * 1.4;
-    const hl = state.hoverCode === c.code;
-    ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fillStyle = hl ? 'rgba(245,210,122,.35)' : 'rgba(245,210,122,.12)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = hl ? '#fff1c2' : 'rgba(245,210,122,.85)'; ctx.fill();
-    c._xy = [x, y, r];
-  }
-
-  // 粒子
-  if (!state.paused){
-    const alive = [];
-    for (const p of state.particles){
-      const t = (now - p.t0) / p.dur;
-      if (t >= 1){ state.pulses.push({x: p.dst[0], y: p.dst[1], t0: now, type: p.type}); continue; }
-      alive.push(p);
-      const col = colorOf(p.type);
-      const tail = Math.max(0, t - .22), steps = 14;
-      ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-      let prev = bez(p, tail);
-      for (let i = 1; i <= steps; i++){
-        const tt = tail + (t - tail) * i / steps, pt = bez(p, tt);
-        ctx.globalAlpha = (i / steps) * .85;
-        ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(pt[0], pt[1]); ctx.stroke();
-        prev = pt;
-      }
-      ctx.globalAlpha = 1;
-      ctx.beginPath(); ctx.arc(prev[0], prev[1], 2.2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
-    }
-    state.particles = alive;
-    const keep = [];
-    for (const q of state.pulses){
-      const t = (now - q.t0) / 900; if (t >= 1) continue; keep.push(q);
-      ctx.globalAlpha = (1 - t) * .8; ctx.strokeStyle = colorOf(q.type); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(q.x, q.y, 3 + t * 26, 0, Math.PI * 2); ctx.stroke();
-    }
-    state.pulses = keep; ctx.globalAlpha = 1;
-  } else {
-    for (const p of state.particles){ const t = Math.min(1, (now - p.t0) / p.dur); const pt = bez(p, t); ctx.globalAlpha = .6; ctx.fillStyle = colorOf(p.type); ctx.beginPath(); ctx.arc(pt[0], pt[1], 2, 0, Math.PI * 2); ctx.fill(); }
-    ctx.globalAlpha = 1;
-  }
-
-  // 標的: 日本
-  ctx.beginPath(); ctx.arc(jp[0], jp[1], 5, 0, Math.PI * 2); ctx.fillStyle = '#f5d27a'; ctx.fill();
-  ctx.beginPath(); ctx.arc(jp[0], jp[1], 9, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(245,210,122,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.font = `600 ${Math.max(11, W / 80)}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillStyle = '#f5d27a'; ctx.textBaseline = 'middle';
-  ctx.fillText('日本 JAPAN', jp[0] + 14, jp[1] - 2);
+  if (globe.mode === 'globe'){ stepRotation(now, dt); drawGlobe(now); }
+  else drawFlat(now);
 }
 
-/* ── ホバー ─────────────────────────── */
+/* ── ホバー・ドラッグ ─────────────────────────── */
 const tip = $('#tip');
+function hideTip(){ tip.style.display = 'none'; state.hoverCode = null; document.querySelectorAll('#rank tbody tr.hl').forEach(tr => tr.classList.remove('hl')); }
 canvas.addEventListener('mousemove', (e) => {
+  if (globe.drag) return;
   const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   let best = null, bd = 14;
   for (const c of state.list){ if (!c._xy) continue; const d = Math.hypot(c._xy[0] - mx, c._xy[1] - my) - c._xy[2]; if (d < bd){ bd = d; best = c; } }
   state.hoverCode = best ? best.code : null;
   document.querySelectorAll('#rank tbody tr').forEach(tr => tr.classList.toggle('hl', tr.dataset.code === state.hoverCode));
   if (best){
+    if (globe.mode === 'globe') globe.idleUntil = Math.max(globe.idleUntil, performance.now() + 1200); // 読んでいる間は止める
     const rank = state.list.indexOf(best) + 1;
     tip.innerHTML = `<b>${flag(best.code)} ${nameOf(best.code, best.name)}</b><div class="v">#${rank} · シェア ${fmtPct(best.share)}%</div>`;
     tip.style.display = 'block';
@@ -806,7 +1006,24 @@ canvas.addEventListener('mousemove', (e) => {
     tip.style.top = Math.max(6, my - th - 10) + 'px';
   } else tip.style.display = 'none';
 });
-canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; state.hoverCode = null; document.querySelectorAll('#rank tbody tr.hl').forEach(tr => tr.classList.remove('hl')); });
+canvas.addEventListener('mouseleave', hideTip);
+canvas.addEventListener('pointerdown', (e) => {
+  if (globe.mode !== 'globe' || e.button > 0) return;
+  globe.drag = {x: e.clientX, y: e.clientY, lam: globe.lam, phi: globe.phi, id: e.pointerId};
+  globe.flyTo = null; canvas.classList.add('dragging'); hideTip();
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
+});
+canvas.addEventListener('pointermove', (e) => {
+  const d = globe.drag; if (!d || e.pointerId !== d.id) return;
+  const k = 57.3 / globe.R * .9;
+  globe.lam = ((d.lam - (e.clientX - d.x) * k + 540) % 360) - 180;
+  globe.phi = Math.max(-75, Math.min(75, d.phi + (e.clientY - d.y) * k));
+});
+const endDrag = (e) => { if (!globe.drag) return; globe.drag = null; canvas.classList.remove('dragging'); globe.idleUntil = performance.now() + 5000; if (globe.spin === 'sway') globe.t = Math.asin(Math.max(-1, Math.min(1, (JP_LL[0] - globe.lam) / 70))) / (globe.speed / 70); };
+canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMapMode(b.dataset.mode)));
+document.querySelectorAll('[data-spin]').forEach(b => b.addEventListener('click', () => setSpin(b.dataset.spin)));
+$('#toJapan').addEventListener('click', flyToJapan);
 
 /* ════════════════════════════════════════════════════════════════════
    UI 描画
@@ -971,18 +1188,25 @@ $('#saveBtn').addEventListener('click', async () => { settings = readForm(); sav
 $('#reloadBtn').addEventListener('click', refresh);
 $('#clearBtn').addEventListener('click', () => { try { localStorage.removeItem(SETTINGS_KEY); localStorage.removeItem(TREND_KEY); } catch {} settings = {...DEFAULTS}; fillForm(); schedule(); refresh(); });
 document.addEventListener('visibilitychange', () => { state.lastTick = 0; state.acc = 0; });
-window.addEventListener('resize', () => { resize(); drawSpark(); });
+let resizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { resize(); drawSpark(); }, 120); });
 setInterval(() => { $('#clock').textContent = fmtTime(new Date()) + ' JST'; }, 500);
 
 (async function init(){
   fillForm();
+  globe.mode = settings.mapMode === 'flat' ? 'flat' : 'globe';
+  globe.spin = ['orbit', 'sway', 'off'].includes(settings.spin) ? settings.spin : 'orbit';
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === globe.mode));
+  document.querySelectorAll('[data-spin]').forEach(b => b.classList.toggle('on', b.dataset.spin === globe.spin));
+  canvas.parentElement.classList.toggle('flat', globe.mode === 'flat');
   resize();
   requestAnimationFrame(frame);
   const [world] = await Promise.all([loadWorld(), refresh()]);
   polys = world;
   if (!polys) $('#mapMsg').textContent = '地図の輪郭データを読み込めませんでした（経緯線のみ表示）。';
   else $('#mapMsg').remove();
-  renderBase();
+  prepareGlobe();
+  if (globe.mode === 'flat') renderBase();
   mapReady = true;
   schedule();
 })();
