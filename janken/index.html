@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>読みジャンケン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one phone column. Scoreboard on top, the hands face off in the middle, three thumb-sized buttons pinned at the bottom. */
+:root{
+  --bg:#eef1ea;          /* 畳の灰緑 */
+  --surface:#ffffff;
+  --surface-2:#e2e7dc;
+  --ink:#1c2420;
+  --ink-soft:#5d675f;
+  --line:#cfd6c9;
+  --accent:#1f6f5c;      /* 深い青緑：AI側 */
+  --accent-ink:#ffffff;
+  --player:#c7542a;      /* 朱：人間側 */
+  --warn:#b8860b;
+  --good:#2b7a4b;
+  --display:"Dela Gothic One","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131a16; --surface:#1d2622; --surface-2:#273029; --ink:#eef2ea; --ink-soft:#a3ada4;
+    --line:#35413a; --accent:#4fbf9f; --accent-ink:#0f1a15; --player:#f08a5d; --warn:#e2b23b; --good:#5fcb86;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131a16; --surface:#1d2622; --surface-2:#273029; --ink:#eef2ea; --ink-soft:#a3ada4;
+  --line:#35413a; --accent:#4fbf9f; --accent-ink:#0f1a15; --player:#f08a5d; --warn:#e2b23b; --good:#5fcb86;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 24px;}
+.app{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:12px;min-height:100%}
+h1{font-family:var(--display);font-size:22px;margin:0;letter-spacing:.02em;text-wrap:balance}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);font-weight:500}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+
+/* name row */
+.namebar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.namebar label{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.namebar input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;font-weight:700;padding:4px 2px}
+.namebar .meta{font-size:12px;color:var(--ink-soft);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* scoreboard */
+.score{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;min-width:0}
+.tile .big{font-family:var(--display);font-size:40px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.tile .big small{font-size:18px}
+.tile .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;font-variant-numeric:tabular-nums}
+.record{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;margin-top:6px}
+.record div{font-variant-numeric:tabular-nums}
+.record b{display:block;font-size:20px;font-family:var(--display);font-weight:400}
+.record span{font-size:11px;color:var(--ink-soft)}
+.record .ai b{color:var(--accent)} .record .pl b{color:var(--player)}
+canvas#trend{width:100%;height:46px;display:block;margin-top:6px}
+
+/* stage */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;position:relative;overflow:hidden}
+.side{text-align:center;min-width:0}
+.side .who{font-size:12px;color:var(--ink-soft);font-weight:500}
+.side .hand{font-size:64px;line-height:1.1;display:block;transition:transform .25s ease}
+.side.ai .who{color:var(--accent)} .side.player .who{color:var(--player)}
+.vs{font-family:var(--display);color:var(--ink-soft);font-size:14px}
+.verdict{grid-column:1/-1;text-align:center;font-family:var(--display);font-size:22px;min-height:30px;letter-spacing:.04em}
+.verdict.ai{color:var(--accent)} .verdict.player{color:var(--player)} .verdict.draw{color:var(--ink-soft)}
+.reason{grid-column:1/-1;font-size:13px;color:var(--ink-soft);text-align:center;min-height:1.5em;text-wrap:balance}
+.reason b{color:var(--ink)}
+.stage.shake .side .hand{animation:shake .45s ease}
+@keyframes shake{0%,100%{transform:translateY(0)}25%{transform:translateY(-10px)}50%{transform:translateY(4px)}75%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.stage.shake .side .hand{animation:none}.side .hand{transition:none}}
+
+/* prediction bars */
+.pred{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:13px}
+.pred .bar{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.pred .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s ease}
+.pred .pct{font-variant-numeric:tabular-nums;color:var(--ink-soft);min-width:3.5ch;text-align:right}
+.pred .lbl{white-space:nowrap}
+
+/* hand buttons */
+.hands{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:sticky;bottom:max(8px,env(safe-area-inset-bottom,0px));z-index:5}
+.hands button{border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.12);transition:transform .08s ease,border-color .15s}
+.hands button .e{font-size:44px;line-height:1}
+.hands button .n{font-size:13px;font-weight:700}
+.hands button:active{transform:scale(.95);border-color:var(--player)}
+.hands button[disabled]{opacity:.5}
+
+/* insights */
+details{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:0}
+summary{cursor:pointer;padding:12px 14px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::after{content:"＋";color:var(--ink-soft);font-weight:400}
+details[open] summary::after{content:"－"}
+.body{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}
+.insights{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.insights li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:14px}
+.insights .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);white-space:nowrap;margin-top:2px;font-variant-numeric:tabular-nums}
+.insights .chip.hot{background:var(--accent);color:var(--accent-ink)}
+.empty{color:var(--ink-soft);font-size:13px}
+.models{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:12px;color:var(--ink-soft)}
+.models .w{font-variant-numeric:tabular-nums;text-align:right}
+.models .w.top{color:var(--accent);font-weight:700}
+.log{display:flex;gap:4px;flex-wrap:wrap}
+.log span{width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;font-size:15px;background:var(--surface-2);border-bottom:3px solid var(--line)}
+.log span.ai{border-bottom-color:var(--accent)} .log span.pl{border-bottom-color:var(--player)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink-soft)}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--ink-soft);border-radius:999px;padding:6px 12px;font-size:12px}
+.ghost.danger{color:var(--player);border-color:var(--player)}
+.note{font-size:12px;color:var(--ink-soft);text-wrap:pretty}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div>
+      <div class="eyebrow">AI vs あなた</div>
+      <h1>読みジャンケン</h1>
+    </div>
+    <div class="eyebrow" id="roundLabel">第 1 戦</div>
+  </header>
+
+  <div class="namebar">
+    <label for="name">名前</label>
+    <input id="name" type="text" maxlength="16" placeholder="あなたの名前" autocomplete="off">
+    <span class="meta" id="nameMeta">新規</span>
+  </div>
+
+  <section class="score" aria-label="戦績">
+    <div class="tile">
+      <div class="eyebrow">AIの勝率（引き分け除く）</div>
+      <div class="big" id="aiRate">--<small>%</small></div>
+      <div class="sub" id="aiRateSub">まだ対戦していません</div>
+      <canvas id="trend" height="46" aria-label="AI勝率の推移"></canvas>
+    </div>
+    <div class="tile">
+      <div class="eyebrow">戦績</div>
+      <div class="record">
+        <div class="ai"><b id="wAi">0</b><span>AI勝</span></div>
+        <div><b id="wDraw">0</b><span>あいこ</span></div>
+        <div class="pl"><b id="wPl">0</b><span>あなた</span></div>
+      </div>
+      <div class="sub" id="confidence">読みの自信：--</div>
+    </div>
+  </section>
+
+  <section class="stage" id="stage" aria-live="polite">
+    <div class="side ai"><div class="who">AI</div><span class="hand" id="aiHand">🤖</span></div>
+    <div class="vs">VS</div>
+    <div class="side player"><div class="who" id="plWho">あなた</div><span class="hand" id="plHand">❔</span></div>
+    <div class="verdict" id="verdict">手を選んでください</div>
+    <div class="reason" id="reason">最初の数戦は様子見。あなたの手を覚えながら読みを組み立てます。</div>
+  </section>
+
+  <section class="tile" aria-label="AIの読み">
+    <div class="eyebrow" style="margin-bottom:8px">AIはこう読んでいた（前の一戦）</div>
+    <div class="pred" id="pred">
+      <span class="lbl">✊ グー</span><div class="bar"><i id="b0"></i></div><span class="pct" id="p0">--</span>
+      <span class="lbl">✌️ チョキ</span><div class="bar"><i id="b1"></i></div><span class="pct" id="p1">--</span>
+      <span class="lbl">✋ パー</span><div class="bar"><i id="b2"></i></div><span class="pct" id="p2">--</span>
+    </div>
+  </section>
+
+  <div class="hands" role="group" aria-label="手を選ぶ">
+    <button type="button" id="h0" data-m="0"><span class="e">✊</span><span class="n">グー</span></button>
+    <button type="button" id="h1" data-m="1"><span class="e">✌️</span><span class="n">チョキ</span></button>
+    <button type="button" id="h2" data-m="2"><span class="e">✋</span><span class="n">パー</span></button>
+  </div>
+
+  <details id="insightBox" open>
+    <summary>AIが見抜いたクセ</summary>
+    <div class="body">
+      <ul class="insights" id="insights"><li class="empty">5戦ほど進むと、あなたのクセがここに並びます。</li></ul>
+      <div class="eyebrow">予測モデルの信頼度（当たるほど発言力が上がる）</div>
+      <div class="models" id="models"></div>
+      <div class="eyebrow">手の履歴（下線：青緑＝AI勝 / 朱＝あなた勝）</div>
+      <div class="log" id="log"></div>
+    </div>
+  </details>
+
+  <div class="foot">
+    <span class="note">履歴は名前ごとにこの端末へ保存されます。</span>
+    <button type="button" class="ghost danger" id="reset">この名前の記録を消す</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const HANDS=[{n:'グー',e:'✊'},{n:'チョキ',e:'✌️'},{n:'パー',e:'✋'}];
+  const counter=m=>(m+2)%3;                 // m に勝つ手
+  const judge=(p,a)=>p===a?'draw':(a===counter(p)?'ai':'player');
+  const norm=c=>{const s=c[0]+c[1]+c[2];return s?c.map(x=>x/s):[1/3,1/3,1/3];};
+  const argmax=d=>d.indexOf(Math.max(...d));
+  const pct=x=>Math.round(x*100);
+
+  // ---- 予測モデル：人間の「次の手」の確率分布を返す。情報が足りなければ null ----
+  const MODELS=[
+    {id:'freq',label:'手の偏り',fn(h){ if(h.length<2)return null; const c=[.5,.5,.5]; h.forEach(r=>c[r.p]+=1); return norm(c);} },
+    {id:'recent',label:'直近8戦の流れ',fn(h){ if(h.length<3)return null; const c=[.5,.5,.5]; h.slice(-8).forEach(r=>c[r.p]+=1); return norm(c);} },
+    {id:'m1',label:'前の手→次の手',fn(h){ if(h.length<3)return null; const last=h[h.length-1].p,c=[.3,.3,.3]; let n=0; for(let i=1;i<h.length;i++) if(h[i-1].p===last){c[h[i].p]+=1;n++;} return n?norm(c):null;} },
+    {id:'m2',label:'直前2手→次の手',fn(h){ if(h.length<5)return null; const a=h[h.length-2].p,b=h[h.length-1].p,c=[.3,.3,.3]; let n=0; for(let i=2;i<h.length;i++) if(h[i-2].p===a&&h[i-1].p===b){c[h[i].p]+=1;n++;} return n?norm(c):null;} },
+    {id:'result',label:'勝敗後の変え方',fn(h){ if(h.length<3)return null; const L=h[h.length-1],s=[.3,.3,.3]; let n=0; for(let i=1;i<h.length;i++) if(h[i-1].r===L.r){ s[(h[i].p-h[i-1].p+3)%3]+=1;n++; } if(!n)return null; const d=[0,0,0]; for(let k=0;k<3;k++) d[(L.p+k)%3]=s[k]; return norm(d);} },
+    {id:'vsai',label:'AIの手への反応',fn(h){ if(h.length<3)return null; const a=h[h.length-1].a,s=[.3,.3,.3]; let n=0; for(let i=1;i<h.length;i++) if(h[i-1].a===a){ s[(h[i].p-h[i-1].a+3)%3]+=1;n++; } if(!n)return null; const d=[0,0,0]; for(let k=0;k<3;k++) d[(a+k)%3]=s[k]; return norm(d);} },
+  ];
+  const DECAY=0.85, TEMP=4;
+  function mixWeights(w,avail){ const z=avail.map(m=>Math.exp(TEMP*(w[m.id]||0))); const s=z.reduce((a,b)=>a+b,0); return z.map(x=>x/s); }
+  function predict(prof){
+    const h=prof.rounds, avail=[], dists=[];
+    MODELS.forEach(m=>{const d=m.fn(h); if(d){avail.push(m);dists.push(d);} });
+    if(!avail.length) return {dist:null,avail:[],dists:[],mw:[]};
+    const mw=mixWeights(prof.w,avail), dist=[0,0,0];
+    dists.forEach((d,i)=>d.forEach((v,k)=>dist[k]+=mw[i]*v));
+    return {dist,avail,dists,mw};
+  }
+  function hashName(s){ let x=2166136261; for(const ch of s){ x^=ch.codePointAt(0); x=Math.imul(x,16777619)>>>0; } return x; }
+
+  // ---- 状態と保存 ----
+  const KEY='yomi-janken:v1';
+  let store={name:'',profiles:{}};
+  try{ const raw=localStorage.getItem(KEY); if(raw) store=Object.assign(store,JSON.parse(raw)); }catch(e){}
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} }
+  function prof(){ const n=store.name||'ゲスト'; if(!store.profiles[n]) store.profiles[n]={rounds:[],w:{}}; return store.profiles[n]; }
+
+  // ---- DOM ----
+  const $=id=>document.getElementById(id);
+  const nameEl=$('name'), stage=$('stage');
+  let lastPred=null; // 直前の読み（表示用）
+
+  function aiMove(p){
+    const pr=predict(p);
+    let m, conf=null, why;
+    if(!pr.dist){
+      m=hashName((store.name||'ゲスト')+':'+p.rounds.length)%3;
+      why=p.rounds.length===0?'初手は名前から占って <b>'+HANDS[m].n+'</b>。ここから覚え始めます。':'まだ材料不足。様子見で <b>'+HANDS[m].n+'</b>。';
+    }else{
+      const guess=argmax(pr.dist); m=counter(guess); conf=pr.dist[guess];
+      const top=pr.avail[argmax(pr.mw)];
+      why='「'+top.label+'」から次は <b>'+HANDS[guess].n+'</b>（'+pct(conf)+'%）と読み、<b>'+HANDS[m].n+'</b> を出す。';
+    }
+    return {m,conf,why,pr};
+  }
+
+  function play(pm){
+    const p=prof(); const {m,conf,why,pr}=aiMove(p);
+    const r=judge(pm,m);
+    // 各モデルの重みを、実際の手に割り当てた確率で更新
+    pr.avail.forEach((mod,i)=>{ const d=pr.dists[i]; p.w[mod.id]=(p.w[mod.id]||0)*DECAY+(d[pm]-1/3); });
+    p.rounds.push({p:pm,a:m,r});
+    lastPred={dist:pr.dist,guess:pr.dist?argmax(pr.dist):null,actual:pm};
+    save();
+    render({pm,m,r,why,conf});
+  }
+
+  function stats(h){ let ai=0,pl=0,dr=0; h.forEach(x=>{ if(x.r==='ai')ai++; else if(x.r==='player')pl++; else dr++; }); return {ai,pl,dr}; }
+
+  function insights(h){
+    const out=[]; const n=h.length;
+    if(n<5) return out;
+    const c=[0,0,0]; h.forEach(r=>c[r.p]++);
+    const top=argmax(c); if(c[top]/n>=0.4) out.push({t:HANDS[top].e+' '+HANDS[top].n+'が多め',d:n+'戦中'+c[top]+'回（'+pct(c[top]/n)+'%）',hot:c[top]/n>=0.5});
+    // 勝敗後の反応
+    const after=(res,label)=>{ let same=0,tot=0; for(let i=1;i<n;i++) if(h[i-1].r===res){tot++; if(h[i].p===h[i-1].p)same++;} if(tot>=3){ const rate=same/tot; if(rate>=0.67) out.push({t:label+'同じ手を続ける',d:tot+'回中'+same+'回',hot:rate>=0.8}); else if(rate<=0.2) out.push({t:label+'手を変える',d:tot+'回中'+(tot-same)+'回',hot:rate<=0.1}); } };
+    after('player','勝った後は'); after('ai','負けた後は'); after('draw','あいこの後は');
+    // 前の手→次の手
+    for(let a=0;a<3;a++){ const cc=[0,0,0]; let tot=0; for(let i=1;i<n;i++) if(h[i-1].p===a){cc[h[i].p]++;tot++;} if(tot>=3){ const b=argmax(cc); if(cc[b]/tot>=0.6) out.push({t:HANDS[a].n+'の次は'+HANDS[b].n,d:tot+'回中'+cc[b]+'回',hot:cc[b]/tot>=0.75}); } }
+    // AIの前の手に勝つ手を出す
+    let beat=0,copy=0,tot=0; for(let i=1;i<n;i++){tot++; if(h[i].p===counter(h[i-1].a))beat++; if(h[i].p===h[i-1].a)copy++;}
+    if(tot>=4&&beat/tot>=0.55) out.push({t:'AIの前の手に勝つ手を出す',d:tot+'回中'+beat+'回',hot:beat/tot>=0.7});
+    if(tot>=4&&copy/tot>=0.55) out.push({t:'AIの前の手をマネする',d:tot+'回中'+copy+'回',hot:copy/tot>=0.7});
+    // 連続回避
+    let rep=0; for(let i=1;i<n;i++) if(h[i].p===h[i-1].p) rep++;
+    if(n>=8&&rep/(n-1)<=0.12) out.push({t:'同じ手を2回続けない',d:(n-1)+'回中'+rep+'回だけ連続',hot:true});
+    if(n>=8&&rep/(n-1)>=0.5) out.push({t:'同じ手を続けがち',d:(n-1)+'回中'+rep+'回連続',hot:rep/(n-1)>=0.65});
+    return out;
+  }
+
+  function drawTrend(h){
+    const cv=$('trend'); const dpr=window.devicePixelRatio||1; const W=cv.clientWidth||300,H=46;
+    cv.width=W*dpr; cv.height=H*dpr; const g=cv.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,W,H);
+    const cs=getComputedStyle(document.documentElement);
+    const acc=cs.getPropertyValue('--accent').trim(), line=cs.getPropertyValue('--line').trim();
+    g.strokeStyle=line; g.setLineDash([3,3]); g.beginPath(); g.moveTo(0,H/2); g.lineTo(W,H/2); g.stroke(); g.setLineDash([]);
+    const pts=[]; let ai=0,pl=0; h.forEach((x,i)=>{ if(x.r==='ai')ai++; else if(x.r==='player')pl++; const t=ai+pl; pts.push(t?ai/t:0.5); });
+    if(pts.length<2) return;
+    const x=i=>pts.length>1?i/(pts.length-1)*(W-4)+2:W/2, y=v=>H-3-v*(H-6);
+    g.beginPath(); pts.forEach((v,i)=>i?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v)));
+    g.lineTo(x(pts.length-1),H); g.lineTo(x(0),H); g.closePath(); g.fillStyle=acc; g.globalAlpha=.15; g.fill(); g.globalAlpha=1;
+    g.beginPath(); pts.forEach((v,i)=>i?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v))); g.strokeStyle=acc; g.lineWidth=2; g.stroke();
+    const lx=x(pts.length-1),ly=y(pts[pts.length-1]); g.beginPath(); g.arc(lx,ly,3,0,Math.PI*2); g.fillStyle=acc; g.fill();
+  }
+
+  function render(last){
+    const p=prof(), h=p.rounds, s=stats(h), dec=s.ai+s.pl;
+    $('roundLabel').textContent='第 '+(h.length+1)+' 戦';
+    $('nameMeta').textContent=h.length?h.length+'戦の記録':'新規';
+    $('plWho').textContent=(store.name||'あなた');
+    $('wAi').textContent=s.ai; $('wPl').textContent=s.pl; $('wDraw').textContent=s.dr;
+    $('aiRate').innerHTML=(dec?pct(s.ai/dec):'--')+'<small>%</small>';
+    const r10=h.slice(-10); const s10=stats(r10); const d10=s10.ai+s10.pl;
+    $('aiRateSub').textContent=dec?('直近10戦では '+(d10?pct(s10.ai/d10)+'%':'--')):'まだ対戦していません';
+    if(last){
+      $('aiHand').textContent=HANDS[last.m].e; $('plHand').textContent=HANDS[last.pm].e;
+      const v=$('verdict'); v.className='verdict '+last.r;
+      v.textContent=last.r==='ai'?'AIの勝ち':last.r==='player'?'あなたの勝ち！':'あいこ';
+      $('reason').innerHTML=last.why;
+      $('confidence').textContent='読みの自信：'+(last.conf==null?'様子見':pct(last.conf)+'%');
+      stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake');
+    }else{
+      $('aiHand').textContent='🤖'; $('plHand').textContent='❔'; $('verdict').className='verdict'; $('verdict').textContent='手を選んでください';
+      $('reason').innerHTML=h.length?'続きから。これまでの'+h.length+'戦を踏まえて読みます。':'最初の数戦は様子見。あなたの手を覚えながら読みを組み立てます。';
+      $('confidence').textContent='読みの自信：--';
+    }
+    // 前の一戦の読み
+    for(let k=0;k<3;k++){ const d=lastPred&&lastPred.dist; $('b'+k).style.width=d?pct(d[k])+'%':'0%'; $('p'+k).textContent=d?pct(d[k])+'%':'--'; $('b'+k).style.background=(lastPred&&lastPred.actual===k)?'var(--player)':'var(--accent)'; }
+    // クセ
+    const ul=$('insights'); ul.innerHTML='';
+    const ins=insights(h);
+    if(!ins.length){ ul.innerHTML='<li class="empty">'+(h.length<5?'5戦ほど進むと、あなたのクセがここに並びます。':'今のところ目立つクセは見つかっていません。読みは統計で続けています。')+'</li>'; }
+    ins.forEach(i=>{ const li=document.createElement('li'); li.innerHTML='<span class="chip'+(i.hot?' hot':'')+'">'+i.d+'</span><span>'+i.t+'</span>'; ul.appendChild(li); });
+    // モデル重み
+    const md=$('models'); md.innerHTML='';
+    const pr=predict(p); const topIdx=pr.mw.length?argmax(pr.mw):-1;
+    MODELS.forEach(m=>{ const i=pr.avail.indexOf(m); const row=document.createElement('div'); row.textContent=m.label; const w=document.createElement('div'); w.className='w'+(i===topIdx&&i>=0?' top':''); w.textContent=i<0?'待機中':pct(pr.mw[i])+'%'; md.appendChild(row); md.appendChild(w); });
+    // 履歴
+    const lg=$('log'); lg.innerHTML=''; h.slice(-24).forEach(x=>{ const sp=document.createElement('span'); sp.className=x.r==='ai'?'ai':x.r==='player'?'pl':''; sp.textContent=HANDS[x.p].e; sp.title='あなた'+HANDS[x.p].n+' / AI'+HANDS[x.a].n; lg.appendChild(sp); });
+    drawTrend(h);
+  }
+
+  // ---- イベント ----
+  document.querySelectorAll('.hands button').forEach(b=>b.addEventListener('click',()=>play(+b.dataset.m)));
+  nameEl.addEventListener('change',()=>{ store.name=nameEl.value.trim(); lastPred=null; save(); render(null); });
+  nameEl.addEventListener('blur',()=>{ if(nameEl.value.trim()!==store.name){ store.name=nameEl.value.trim(); lastPred=null; save(); render(null);} });
+  let armed=false;
+  $('reset').addEventListener('click',e=>{
+    if(!armed){ armed=true; e.target.textContent='本当に消す？（もう一度タップ）'; setTimeout(()=>{armed=false;e.target.textContent='この名前の記録を消す';},3000); return; }
+    delete store.profiles[store.name||'ゲスト']; lastPred=null; save(); armed=false; e.target.textContent='この名前の記録を消す'; render(null);
+  });
+  window.addEventListener('resize',()=>drawTrend(prof().rounds));
+  if(window.matchMedia){ try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>drawTrend(prof().rounds)); }catch(e){} }
+
+  function start(snap){
+    if(snap&&snap.store) store=snap.store;
+    if(snap&&snap.lastPred) lastPred=snap.lastPred;
+    nameEl.value=store.name||'';
+    render(null);
+  }
+  if(window.claude&&window.claude.hot){ try{ window.claude.hot.snapshot(()=>({store,lastPred})); }catch(e){} }
+  (window.claude&&window.claude.hot&&window.claude.hot.ready)?window.claude.hot.ready(start):start(window.claude&&window.claude.hot?window.claude.hot.data:null);
+})();
+</script>
+</body>
+</html>
