@@ -20,17 +20,25 @@
 
 ## 画像アセットの差し替え
 
-`public/` に以下のファイルを置くと SVG の代わりにそれを使います（無ければ SVG で描画）。
+`e-card-src/src/assets/` に以下のファイル名（png / jpg / webp）で画像を置いてビルドすると、SVG の代わりにそれを使います（無ければ SVG で描画）。
 
 `king.png` `citizen.png` `slave.png` `card_back.png` `angel.png` `demon.png` `win_treasure.png` `lose_dungeon.png`
+
+## フォルダ構成と公開
+
+- `e-card-src/` … ソースコード（このフォルダ）
+- `e-card/` … `npm run build` の出力。GitHub Pages で `https://kiyo0630-cpu.github.io/compass-/e-card/` として配信される
+- `.github/workflows/e-card-build.yml` … main の `e-card-src/` が変わると自動でビルドして `e-card/` をコミットする
+
+スマホの Safari で開いて「共有 → ホーム画面に追加」すると、フルスクリーンのアプリとして起動できます。
 
 ## 開発
 
 ```bash
-cd e-card
+cd e-card-src
 npm install
 npm run dev -- --host   # 同じ Wi-Fi のスマホから Network の URL で開ける
-npm run build           # dist/ に出力（base は './' なのでサブディレクトリ配信可）
+npm run build           # ../e-card に出力（base は './' なのでサブディレクトリ配信可）
 ```
 
 開発サーバー限定で `?debug=win` / `?debug=lose` を付けると最終結果画面を直接確認できます。
