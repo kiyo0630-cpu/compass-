@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3b2418">
+<title>カフェイン時計</title>
+<meta name="description" content="飲んだ珈琲の時刻と量を記録すると、体内カフェイン量と覚醒の推移をグラフで表示するスマホ向けページ。">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f6f1ea; --surface:#fffdf9; --surface-2:#f1e9df;
+  --ink:#2a1d15; --ink-2:#6b5a4e; --ink-3:#9a8a7e; --rule:#e3d8cb;
+  --accent:#a0542a; --accent-ink:#7a3d1c; --accent-soft:rgba(160,84,42,.14);
+  --header:#3b2418; --header-ink:#f6ede2;
+  --zone-1:rgba(160,84,42,.05); --zone-2:rgba(160,84,42,.10); --zone-3:rgba(160,84,42,.16); --zone-4:rgba(160,84,42,.24);
+  --ok:#2e7d4f; --warn:#b26a00; --bad:#b4322a;
+  --now:#2a1d15; --grid:#eadfd2;
+  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#151110; --surface:#1f1917; --surface-2:#2a2220;
+    --ink:#f1e9e1; --ink-2:#c2b4a8; --ink-3:#8c7e73; --rule:#3a302b;
+    --accent:#c97a45; --accent-ink:#e3a673; --accent-soft:rgba(201,122,69,.18);
+    --header:#2a1a12; --header-ink:#f6ede2;
+    --zone-1:rgba(201,122,69,.06); --zone-2:rgba(201,122,69,.11); --zone-3:rgba(201,122,69,.17); --zone-4:rgba(201,122,69,.25);
+    --ok:#5fbf86; --warn:#e0a24a; --bad:#ec7b73;
+    --now:#f1e9e1; --grid:#2e2521;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#151110; --surface:#1f1917; --surface-2:#2a2220;
+  --ink:#f1e9e1; --ink-2:#c2b4a8; --ink-3:#8c7e73; --rule:#3a302b;
+  --accent:#c97a45; --accent-ink:#e3a673; --accent-soft:rgba(201,122,69,.18);
+  --header:#2a1a12; --header-ink:#f6ede2;
+  --zone-1:rgba(201,122,69,.06); --zone-2:rgba(201,122,69,.11); --zone-3:rgba(201,122,69,.17); --zone-4:rgba(201,122,69,.25);
+  --ok:#5fbf86; --warn:#e0a24a; --bad:#ec7b73;
+  --now:#f1e9e1; --grid:#2e2521;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;padding:0 16px calc(32px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+header{background:var(--header);color:var(--header-ink);margin:0 -16px 14px;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+header h1{font-size:19px;font-weight:700;letter-spacing:.04em}
+header .clock{font-family:var(--mono);font-size:15px;opacity:.85}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.card h2{font-size:13px;color:var(--ink-2);font-weight:600;letter-spacing:.06em;margin-bottom:8px}
+
+/* 現在の状態 */
+.now-grid{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:end}
+.now-level{font-size:22px;font-weight:700;line-height:1.3}
+.now-mg{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em;text-align:right;line-height:1}
+.now-mg small{font-size:13px;font-weight:500;color:var(--ink-2);margin-left:2px}
+.now-sub{grid-column:1/-1;color:var(--ink-2);font-size:13px}
+.meter{grid-column:1/-1;height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden;position:relative;margin-top:4px}
+.meter>i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:5px;transition:width .4s}
+.meter-scale{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3)}
+.milestones{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.ms{background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.ms b{display:block;font-family:var(--mono);font-size:17px;font-weight:600}
+.ms span{font-size:11px;color:var(--ink-2)}
+
+/* グラフ */
+.chart-wrap{position:relative;margin:0 -4px}
+svg{display:block;width:100%;height:auto;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.tip{position:absolute;top:6px;left:8px;pointer-events:none;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:6px 10px;font-size:12px;line-height:1.5;box-shadow:0 4px 14px rgba(0,0,0,.08);display:none;white-space:nowrap}
+.tip b{font-family:var(--mono);font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--ink-2);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--rule)}
+
+/* 入力 */
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.row.one{grid-template-columns:1fr}
+label.f{display:block;font-size:12px;color:var(--ink-2)}
+label.f>span{display:block;margin-bottom:3px}
+input,select{width:100%;background:var(--surface-2);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:16px;min-height:46px;appearance:none;-webkit-appearance:none}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.amt{display:grid;grid-template-columns:1fr auto;gap:0;align-items:stretch}
+.amt input{border-radius:10px 0 0 10px}
+.amt .unit{display:flex;align-items:center;padding:0 12px;background:var(--surface-2);border:1px solid var(--rule);border-left:0;border-radius:0 10px 10px 0;color:var(--ink-2);font-size:14px;min-width:3.2em;justify-content:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:10px 16px;border-radius:12px;border:1px solid var(--rule);background:var(--surface-2);font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;width:100%;font-size:16px}
+.btn.ghost{background:transparent;color:var(--ink-2);font-weight:500;min-height:36px;padding:6px 10px}
+.btn:active{transform:translateY(1px)}
+.est{font-size:12px;color:var(--ink-2);margin:-2px 0 10px;text-align:right}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.quick .btn{font-size:14px;padding:8px 6px;min-height:42px;white-space:nowrap}
+
+/* 履歴 */
+ul.log{list-style:none}
+ul.log li{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--rule)}
+ul.log li:first-child{border-top:0}
+ul.log .t{font-family:var(--mono);font-size:15px}
+ul.log .d{font-size:13px}
+ul.log .d small{display:block;color:var(--ink-3);font-size:11px}
+ul.log .mg{font-family:var(--mono);font-size:14px;color:var(--ink-2)}
+ul.log .del{border:0;background:none;color:var(--ink-3);font-size:18px;padding:4px 6px;line-height:1}
+.empty{color:var(--ink-3);font-size:13px;text-align:center;padding:10px 0}
+
+details summary{cursor:pointer;font-size:13px;color:var(--ink-2);font-weight:600;letter-spacing:.06em;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--ink-3)}
+details[open] summary::before{content:"▾ "}
+details .body{margin-top:10px}
+.range{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font-size:13px;margin-bottom:8px}
+.range input[type=range]{min-height:auto;padding:0;background:none;border:0;accent-color:var(--accent)}
+.range output{font-family:var(--mono);min-width:4.5em;text-align:right}
+.note{font-size:12px;color:var(--ink-3);line-height:1.6;margin-top:8px}
+.note p+p{margin-top:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+table.tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+table.tbl td,table.tbl th{padding:3px 6px;border-bottom:1px solid var(--rule);text-align:right}
+table.tbl th:first-child,table.tbl td:first-child{text-align:left}
+</style>
+</head>
+<body>
+<header>
+  <h1>☕ カフェイン時計</h1>
+  <div class="clock" id="clock">--:--</div>
+</header>
+
+<section class="card" aria-live="polite">
+  <h2>いまの状態</h2>
+  <div class="now-grid">
+    <div class="now-level" id="nowLevel">記録なし</div>
+    <div class="now-mg"><span id="nowMg">0</span><small>mg</small></div>
+    <div class="now-sub" id="nowSub">下のフォームから飲んだ珈琲を追加してください。</div>
+    <div class="meter" aria-hidden="true"><i id="meterBar" style="width:0%"></i></div>
+    <div class="meter-scale" aria-hidden="true"><span>0</span><span>軽い 30</span><span>しっかり 80</span><span>強い 160</span><span>300</span></div>
+    <div class="milestones">
+      <div class="ms"><b id="msPeak">--:--</b><span id="msPeakLbl">ピーク</span></div>
+      <div class="ms"><b id="msHalf">--:--</b><span>半分に減る</span></div>
+      <div class="ms"><b id="msBed">--</b><span id="msBedLbl">就寝時に残る量</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>体内カフェイン量の推移</h2>
+  <div class="chart-wrap" id="chartWrap">
+    <svg id="chart" viewBox="0 0 360 230" role="img" aria-labelledby="chartTitle"><title id="chartTitle">体内カフェイン量の時間推移</title></svg>
+    <div class="tip" id="tip"></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--zone-2)"></i>軽い（30〜80mg）</span>
+    <span><i style="background:var(--zone-3)"></i>しっかり（80〜160mg）</span>
+    <span><i style="background:var(--zone-4)"></i>強い（160mg〜）</span>
+    <span><i style="background:none;border:0;border-left:2px dashed var(--ink-2);width:2px;border-radius:0"></i>現在</span>
+  </div>
+  <details style="margin-top:8px">
+    <summary>数値で見る</summary>
+    <div class="body"><table class="tbl" id="tbl"></table></div>
+  </details>
+</section>
+
+<section class="card">
+  <h2>飲んだ珈琲を追加</h2>
+  <form id="form" autocomplete="off">
+    <div class="row">
+      <label class="f"><span>飲んだ時刻</span><input type="time" id="fTime" required></label>
+      <label class="f"><span>種類</span>
+        <select id="fKind"></select>
+      </label>
+    </div>
+    <div class="row one">
+      <label class="f"><span>量</span>
+        <div class="amt"><input type="number" id="fAmt" inputmode="decimal" step="any" min="0" required><span class="unit" id="fUnit">g</span></div>
+      </label>
+    </div>
+    <div class="est" id="fEst"></div>
+    <button type="submit" class="btn primary">＋ 追加する</button>
+  </form>
+  <div class="quick">
+    <button type="button" class="btn" data-quick="drip:15">いま 豆15g</button>
+    <button type="button" class="btn" data-quick="drip:10">いま 豆10g</button>
+    <button type="button" class="btn" data-quick="espresso:1">いま エスプレッソ1杯</button>
+    <button type="button" class="btn" data-quick="can:185">いま 缶185ml</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2 style="display:flex;justify-content:space-between;align-items:center">記録 <button type="button" class="btn ghost" id="clearAll">すべて消す</button></h2>
+  <ul class="log" id="log"></ul>
+</section>
+
+<section class="card">
+  <details>
+    <summary>設定と計算のしくみ</summary>
+    <div class="body">
+      <div class="range"><span>半減期（体質で3〜7時間）</span><output id="oHalf">5.0 h</output><input type="range" id="sHalf" min="2.5" max="8" step="0.5" style="grid-column:1/-1"></div>
+      <div class="range"><span>ドリップ豆1gあたりのカフェイン</span><output id="oPerG">10 mg</output><input type="range" id="sPerG" min="6" max="14" step="1" style="grid-column:1/-1"></div>
+      <div class="range"><span>就寝予定時刻</span><input type="time" id="sBed" style="width:auto;min-height:40px;padding:6px 10px"></div>
+      <div class="note">
+        <p>体内量は「飲んだ量 × 吸収曲線」を杯ごとに計算して足し合わせています。吸収は飲んでから約40分で最大になり、その後は半減期ごとに半分になります（1コンパートメントモデル）。</p>
+        <p>覚醒感の目安：30mg未満＝ほぼ切れた／30〜80mg＝軽く効いている／80〜160mg＝しっかり効いている／160mg以上＝強い。感じ方には個人差があります。健康な成人の目安は1日400mgまで（EFSA）。</p>
+        <p>データはこの端末のブラウザにだけ保存されます。</p>
+      </div>
+    </div>
+  </details>
+</section>
+
+<script>
+'use strict';
+(() => {
+const KINDS = {
+  drip:     {label:'ドリップ（豆）', unit:'g',   perUnit: null, desc:'豆の重さ'},
+  espresso: {label:'エスプレッソ',   unit:'杯',  perUnit: 63,  desc:'1ショット約63mg'},
+  instant:  {label:'インスタント',   unit:'g',   perUnit: 35,  desc:'粉1gあたり約35mg'},
+  can:      {label:'缶・ペット珈琲', unit:'ml',  perUnit: 0.6, desc:'100mlあたり約60mg'},
+  tea:      {label:'紅茶',           unit:'ml',  perUnit: 0.3, desc:'100mlあたり約30mg'},
+  green:    {label:'緑茶',           unit:'ml',  perUnit: 0.2, desc:'100mlあたり約20mg'},
+  energy:   {label:'エナジードリンク',unit:'ml', perUnit: 0.32,desc:'100mlあたり約32mg'},
+  mg:       {label:'カフェイン量を直接', unit:'mg', perUnit: 1, desc:''},
+};
+const DEFAULT_AMT = {drip:15, espresso:1, instant:2, can:185, tea:150, green:150, energy:250, mg:100};
+const LEVELS = [
+  {min:300, name:'かなり多い', sub:'取りすぎ注意。動悸やそわそわ感が出やすい量です。', cls:'bad'},
+  {min:160, name:'強く効いている', sub:'覚醒感は十分。これ以上の追加は控えめに。', cls:'warn'},
+  {min:80,  name:'しっかり効いている', sub:'集中しやすい状態。', cls:'ok'},
+  {min:30,  name:'軽く効いている', sub:'ゆるやかに覚醒している状態。', cls:'ok'},
+  {min:0,   name:'ほぼ切れている', sub:'カフェインの効果はほとんど残っていません。', cls:''},
+];
+const KA = 5.5;             // 吸収速度定数 /h（約40分でピーク）
+const METER_MAX = 300;
+const STORE = 'caffeine-clock-v1';
+
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2,'0');
+const fmtT = (ms) => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const fmtDay = (ms) => { const d = new Date(ms), n = new Date(); return d.toDateString() === n.toDateString() ? '' : (d.getMonth()+1) + '/' + d.getDate() + ' '; };
+
+let state = load();
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(STORE)); if (s && Array.isArray(s.entries)) return {entries:s.entries, settings:Object.assign({half:5, perG:10, bed:'23:00'}, s.settings||{})}; }catch(e){}
+  return {entries:[], settings:{half:5, perG:10, bed:'23:00'}};
+}
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){} }
+
+function mgOf(kind, amount){
+  const k = KINDS[kind]; if (!k) return 0;
+  const per = kind === 'drip' ? state.settings.perG : k.perUnit;
+  return Math.round(amount * per);
+}
+// 1杯ぶんの体内量（mg）: Bateman関数
+function doseAt(mg, hoursSince){
+  if (hoursSince <= 0) return 0;
+  const ke = Math.LN2 / state.settings.half;
+  return mg * KA / (KA - ke) * (Math.exp(-ke * hoursSince) - Math.exp(-KA * hoursSince));
+}
+function totalAt(ms){
+  let s = 0;
+  for (const e of state.entries) s += doseAt(e.mg, (ms - e.t) / 36e5);
+  return s;
+}
+function levelOf(mg){ return LEVELS.find(l => mg >= l.min); }
+function relevantEntries(now){
+  // 直近の中で、まだ1mg以上残っている or 24時間以内のもの
+  return state.entries.filter(e => e.t > now - 36e5 * 36 && (doseAt(e.mg, (now - e.t)/36e5) >= 1 || e.t > now - 864e5)).sort((a,b) => a.t - b.t);
+}
+
+// ---------- 現在の状態 ----------
+function bedTimeMs(now){
+  const [h, m] = (state.settings.bed || '23:00').split(':').map(Number);
+  const d = new Date(now); d.setHours(h, m, 0, 0);
+  if (d.getTime() < now - 36e5 * 6) d.setDate(d.getDate() + 1); // 6時間以上前なら翌日
+  return d.getTime();
+}
+function renderNow(now){
+  const entries = relevantEntries(now);
+  const cur = totalAt(now);
+  const lv = levelOf(cur);
+  $('nowMg').textContent = Math.round(cur);
+  $('meterBar').style.width = Math.min(100, cur / METER_MAX * 100) + '%';
+  if (!entries.length){
+    $('nowLevel').textContent = '記録なし';
+    $('nowSub').textContent = '下のフォームから飲んだ珈琲を追加してください。';
+    $('msPeak').textContent = $('msHalf').textContent = '--:--'; $('msBed').textContent = '--';
+    $('msPeakLbl').textContent = 'ピーク';
+    return;
+  }
+  $('nowLevel').textContent = lv.name;
+  const last = entries[entries.length - 1];
+  const sinceMin = Math.round((now - last.t) / 6e4);
+  let sub = lv.sub;
+  if (sinceMin >= 0 && sinceMin < 40) sub = `最後の1杯から${sinceMin}分。あと${40 - sinceMin}分ほどで効きがピークに向かいます。`;
+  $('nowSub').textContent = sub;
+
+  // ピーク（これから先の最大）
+  let peakT = now, peakV = cur, prev = cur;
+  for (let t = now; t <= now + 36e5 * 3; t += 6e4){ const v = totalAt(t); if (v > peakV){ peakV = v; peakT = t; } }
+  if (peakT > now + 6e4){ $('msPeak').textContent = fmtT(peakT); $('msPeakLbl').textContent = `ピーク ${Math.round(peakV)}mg`; }
+  else { $('msPeak').textContent = '今'; $('msPeakLbl').textContent = 'ピークは過ぎた'; }
+  // 現在値が半分になる時刻
+  let halfT = null;
+  const target = Math.max(peakV, cur) / 2;
+  for (let t = peakT; t <= now + 36e5 * 24; t += 6e4){ if (totalAt(t) <= target){ halfT = t; break; } }
+  $('msHalf').textContent = halfT ? fmtT(halfT) : '--:--';
+  // 就寝時の残量
+  const bed = bedTimeMs(now);
+  const bedV = totalAt(bed);
+  $('msBed').textContent = Math.round(bedV) + 'mg';
+  $('msBedLbl').textContent = `${fmtT(bed)}就寝時に残る`;
+  $('msBed').style.color = bedV >= 80 ? 'var(--bad)' : bedV >= 30 ? 'var(--warn)' : '';
+}
+
+// ---------- グラフ ----------
+const W = 360, H = 230, PL = 34, PR = 10, PT = 14, PB = 26;
+let view = null; // {t0,t1,yMax,pts}
+function windowRange(now){
+  // まだ10mg以上残っている杯だけを表示範囲の決定に使う（昨日の1杯で左側が空白にならないように）
+  const entries = relevantEntries(now).filter(e => doseAt(e.mg, (now - e.t) / 36e5) >= 10 || e.t > now - 36e5 * 2);
+  const first = entries.length ? entries[0].t : now;
+  const last = entries.length ? entries[entries.length - 1].t : now;
+  let t0 = Math.min(now - 36e5 * 1.5, first - 36e5 * 0.5);
+  let t1 = Math.max(now + 36e5 * 6, last + 36e5 * 8);
+  if (t1 - t0 > 36e5 * 16) t0 = t1 - 36e5 * 16;
+  if (t1 - t0 < 36e5 * 8) t1 = t0 + 36e5 * 8;
+  const f = new Date(t0); f.setMinutes(0, 0, 0); t0 = f.getTime();
+  const c = new Date(t1); c.setMinutes(0, 0, 0); t1 = c.getTime() + 36e5;
+  return [t0, t1];
+}
+function renderChart(now){
+  const svg = $('chart');
+  const [t0, t1] = windowRange(now);
+  const step = 5 * 6e4;
+  const pts = [];
+  let maxV = 0;
+  for (let t = t0; t <= t1; t += step){ const v = totalAt(t); pts.push([t, v]); if (v > maxV) maxV = v; }
+  const yMax = Math.max(200, Math.ceil(maxV * 1.15 / 50) * 50);
+  const x = (t) => PL + (t - t0) / (t1 - t0) * (W - PL - PR);
+  const y = (v) => PT + (1 - v / yMax) * (H - PT - PB);
+  view = {t0, t1, yMax, x, y};
+  const hours = (t1 - t0) / 36e5;
+  const tick = hours <= 9 ? 1 : hours <= 14 ? 2 : 3;
+  let s = '';
+  // ゾーン
+  const zones = [[30,80,'--zone-2'],[80,160,'--zone-3'],[160,yMax,'--zone-4'],[0,30,'--zone-1']];
+  for (const [a,b,c] of zones){ if (a >= yMax) continue; const bb = Math.min(b, yMax); s += `<rect x="${PL}" y="${y(bb)}" width="${W-PL-PR}" height="${y(a)-y(bb)}" fill="var(${c})"/>`; }
+  // 横グリッドとy軸ラベル
+  for (let v = 0; v <= yMax; v += (yMax > 400 ? 100 : 50)){
+    s += `<line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${PL-5}" y="${y(v)+3.5}" font-size="9.5" text-anchor="end" fill="var(--ink-3)">${v}</text>`;
+  }
+  // x軸ラベル
+  for (let t = t0; t <= t1; t += 36e5){
+    const h = new Date(t).getHours();
+    if (h % tick !== 0) continue;
+    s += `<line x1="${x(t)}" x2="${x(t)}" y1="${H-PB}" y2="${H-PB+3}" stroke="var(--ink-3)"/>`;
+    s += `<text x="${x(t)}" y="${H-PB+13}" font-size="9.5" text-anchor="middle" fill="var(--ink-2)">${h}時</text>`;
+  }
+  s += `<line x1="${PL}" x2="${W-PR}" y1="${H-PB}" y2="${H-PB}" stroke="var(--rule)"/>`;
+  // 面と線
+  const lineD = pts.map((p,i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1)).join(' ');
+  const areaD = lineD + ` L${x(t1).toFixed(1)} ${y(0)} L${x(t0).toFixed(1)} ${y(0)} Z`;
+  s += `<path d="${areaD}" fill="var(--accent)" fill-opacity=".18"/>`;
+  s += `<path d="${lineD}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  // 杯のマーカー
+  for (const e of relevantEntries(now)){
+    if (e.t < t0 || e.t > t1) continue;
+    s += `<g transform="translate(${x(e.t).toFixed(1)} ${y(0)})"><line y1="0" y2="-6" stroke="var(--accent)" stroke-width="1.5"/><circle cy="-10" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/></g>`;
+  }
+  // 現在線
+  if (now >= t0 && now <= t1){
+    s += `<line x1="${x(now)}" x2="${x(now)}" y1="${PT}" y2="${H-PB}" stroke="var(--now)" stroke-width="1.2" stroke-dasharray="3 3" opacity=".7"/>`;
+    s += `<circle cx="${x(now)}" cy="${y(totalAt(now))}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+    s += `<text x="${x(now) + (x(now) > W - 60 ? -4 : 4)}" y="${PT+8}" font-size="9.5" text-anchor="${x(now) > W - 60 ? 'end' : 'start'}" fill="var(--ink-2)">今 ${fmtT(now)}</text>`;
+  }
+  // ホバー層
+  s += `<g id="hover" style="display:none"><line id="hvLine" y1="${PT}" y2="${H-PB}" stroke="var(--ink-2)" stroke-width="1"/><circle id="hvDot" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/></g>`;
+  s += `<rect x="${PL}" y="${PT}" width="${W-PL-PR}" height="${H-PT-PB}" fill="transparent" id="hit"/>`;
+  svg.innerHTML = `<title>体内カフェイン量の時間推移</title>` + s;
+
+  // 表
+  let rows = '<tr><th>時刻</th><th>体内量 mg</th><th>状態</th></tr>';
+  for (let t = t0; t <= t1; t += 36e5){ const v = totalAt(t); rows += `<tr><td>${fmtDay(t)}${fmtT(t)}</td><td>${Math.round(v)}</td><td>${levelOf(v).name}</td></tr>`; }
+  $('tbl').innerHTML = rows;
+}
+// タッチ／ホバーでクロスヘア
+(() => {
+  const svg = $('chart'), tip = $('tip'), wrap = $('chartWrap');
+  function at(clientX){
+    if (!view) return;
+    const r = svg.getBoundingClientRect();
+    const px = (clientX - r.left) / r.width * W;
+    const t = Math.max(view.t0, Math.min(view.t1, view.t0 + (px - PL) / (W - PL - PR) * (view.t1 - view.t0)));
+    const v = totalAt(t);
+    const hv = $('hover'); if (!hv) return;
+    hv.style.display = '';
+    const xx = view.x(t), yy = view.y(v);
+    $('hvLine').setAttribute('x1', xx); $('hvLine').setAttribute('x2', xx);
+    $('hvDot').setAttribute('cx', xx); $('hvDot').setAttribute('cy', yy);
+    tip.style.display = 'block';
+    tip.innerHTML = `${fmtDay(t)}${fmtT(t)}<br><b>${Math.round(v)} mg</b> ・ ${levelOf(v).name}`;
+    const wr = wrap.getBoundingClientRect();
+    const left = (xx / W) * wr.width;
+    tip.style.left = Math.max(4, Math.min(wr.width - tip.offsetWidth - 4, left + (left > wr.width / 2 ? -tip.offsetWidth - 12 : 12))) + 'px';
+  }
+  function hide(){ const hv = $('hover'); if (hv) hv.style.display = 'none'; tip.style.display = 'none'; }
+  svg.addEventListener('pointermove', (e) => at(e.clientX));
+  svg.addEventListener('pointerdown', (e) => at(e.clientX));
+  svg.addEventListener('pointerleave', hide);
+  svg.addEventListener('pointerup', () => setTimeout(hide, 1500));
+})();
+
+// ---------- 記録一覧 ----------
+function renderLog(){
+  const ul = $('log');
+  const list = [...state.entries].sort((a,b) => b.t - a.t).slice(0, 30);
+  if (!list.length){ ul.innerHTML = '<li class="empty" style="display:block">まだ記録がありません</li>'; return; }
+  ul.innerHTML = list.map(e => {
+    const k = KINDS[e.kind] || KINDS.mg;
+    return `<li><span class="t">${fmtT(e.t)}</span><span class="d">${k.label} ${e.amount}${k.unit}<small>${fmtDay(e.t) || '今日'}</small></span><span class="mg">${e.mg}mg</span><button class="del" data-id="${e.id}" aria-label="この記録を削除">×</button></li>`;
+  }).join('');
+}
+$('log').addEventListener('click', (e) => {
+  const b = e.target.closest('.del'); if (!b) return;
+  state.entries = state.entries.filter(x => x.id !== b.dataset.id); save(); renderAll();
+});
+$('clearAll').addEventListener('click', () => {
+  if (!state.entries.length) return;
+  if (confirm('記録をすべて消しますか？')){ state.entries = []; save(); renderAll(); }
+});
+
+// ---------- 入力 ----------
+const fKind = $('fKind'), fAmt = $('fAmt'), fTime = $('fTime'), fUnit = $('fUnit'), fEst = $('fEst');
+fKind.innerHTML = Object.entries(KINDS).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
+function setNowTime(){ fTime.value = fmtT(Date.now()); }
+function onKind(){ const k = KINDS[fKind.value]; fUnit.textContent = k.unit; fAmt.value = DEFAULT_AMT[fKind.value]; onAmt(); }
+function onAmt(){
+  const k = KINDS[fKind.value]; const a = parseFloat(fAmt.value);
+  fEst.textContent = isFinite(a) && a > 0 ? `≈ カフェイン ${mgOf(fKind.value, a)} mg${k.desc ? '（' + k.desc + '）' : ''}` : '';
+}
+fKind.addEventListener('change', onKind); fAmt.addEventListener('input', onAmt);
+function timeToMs(hhmm){
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  if (d.getTime() > Date.now() + 36e5 * 2) d.setDate(d.getDate() - 1); // 2時間より先なら昨日の記録とみなす
+  return d.getTime();
+}
+function addEntry(kind, amount, t){
+  const mg = mgOf(kind, amount); if (!(mg > 0)) return;
+  state.entries.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), t, kind, amount, mg});
+  state.entries = state.entries.filter(e => e.t > Date.now() - 864e5 * 7); // 1週間より古いものは捨てる
+  save(); renderAll();
+}
+$('form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const a = parseFloat(fAmt.value); if (!(a > 0) || !fTime.value) return;
+  addEntry(fKind.value, a, timeToMs(fTime.value));
+  setNowTime();
+  if (navigator.vibrate) navigator.vibrate(10);
+});
+document.querySelectorAll('[data-quick]').forEach(b => b.addEventListener('click', () => {
+  const [k, a] = b.dataset.quick.split(':'); addEntry(k, parseFloat(a), Date.now());
+  if (navigator.vibrate) navigator.vibrate(10);
+}));
+
+// ---------- 設定 ----------
+const sHalf = $('sHalf'), sPerG = $('sPerG'), sBed = $('sBed');
+sHalf.value = state.settings.half; sPerG.value = state.settings.perG; sBed.value = state.settings.bed;
+function syncSettings(){
+  state.settings.half = parseFloat(sHalf.value); state.settings.perG = parseFloat(sPerG.value); state.settings.bed = sBed.value || '23:00';
+  $('oHalf').textContent = state.settings.half.toFixed(1) + ' h'; $('oPerG').textContent = state.settings.perG + ' mg';
+  // 豆のmg換算は設定に追従させる
+  for (const e of state.entries) if (e.kind === 'drip') e.mg = mgOf('drip', e.amount);
+  save(); onAmt(); renderAll();
+}
+sHalf.addEventListener('input', syncSettings); sPerG.addEventListener('input', syncSettings); sBed.addEventListener('change', syncSettings);
+$('oHalf').textContent = state.settings.half.toFixed(1) + ' h'; $('oPerG').textContent = state.settings.perG + ' mg';
+
+// ---------- 全体 ----------
+function renderAll(){
+  const now = Date.now();
+  $('clock').textContent = fmtT(now);
+  renderNow(now); renderChart(now); renderLog();
+}
+setNowTime(); onKind(); renderAll();
+setInterval(renderAll, 60e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) renderAll(); });
+})();
+</script>
+</body>
+</html>
