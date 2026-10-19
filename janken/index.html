@@ -191,7 +191,7 @@ details[open] summary::after{content:"－"}
   </details>
 
   <div class="foot">
-    <span class="note">履歴は名前ごとにこの端末へ保存されます。</span>
+    <span class="note">履歴は名前ごとに保存されます。<br><span id="cloud">クラウド保存：確認中</span></span>
     <button type="button" class="ghost danger" id="reset">この名前の記録を消す</button>
   </div>
 </div>
@@ -233,6 +233,32 @@ details[open] summary::after{content:"－"}
   function save(){ try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} }
   function prof(){ const n=store.name||'ゲスト'; if(!store.profiles[n]) store.profiles[n]={rounds:[],w:{}}; return store.profiles[n]; }
 
+  // ---- クラウド保存（db）：名前ごとに1ドキュメント。ローカル保存はキャッシュとして併用 ----
+  let db=null; const dbBusy={};
+  const docId=n=>'p_'+hashName(n).toString(16);
+  async function cloudWrite(n){
+    if(!db||dbBusy[n]) return; dbBusy[n]=true;
+    try{ const pr=store.profiles[n]; if(pr) await db.collection('players').doc(docId(n)).set({name:n,rounds:pr.rounds,w:pr.w,updatedAt:new Date().toISOString()});
+      else await db.collection('players').doc(docId(n)).delete(); setCloud('クラウド保存：オン'); }
+    catch(e){ setCloud('クラウド保存：書き込み不可（この端末だけに保存）'); db=null; }
+    finally{ dbBusy[n]=false; }
+  }
+  function setCloud(t){ const el=$('cloud'); if(el) el.textContent=t; }
+  async function cloudInit(){
+    if(!(window.claude&&window.claude.use)) return;
+    try{ db=await window.claude.use('db'); }catch(e){ db=null; }
+    if(!db){ setCloud('クラウド保存：オフ（この端末だけに保存）'); return; }
+    try{
+      const snap=await db.collection('players').get(); const pending=[];
+      snap.docs.forEach(d=>{ const x=d.data(); if(!x||!x.name) return; const loc=store.profiles[x.name];
+        if(!loc||loc.rounds.length<(x.rounds||[]).length) store.profiles[x.name]={rounds:x.rounds||[],w:x.w||{}}; else if(loc.rounds.length>(x.rounds||[]).length) pending.push(x.name); });
+      const seen=new Set(snap.docs.map(d=>d.id));
+      Object.keys(store.profiles).forEach(n=>{ if(!seen.has(docId(n))&&store.profiles[n].rounds.length) pending.push(n); });
+      save(); render(null); setCloud('クラウド保存：オン');
+      for(const n of pending) await cloudWrite(n);
+    }catch(e){ setCloud('クラウド保存：読み込み不可（この端末だけに保存）'); db=null; }
+  }
+
   // ---- DOM ----
   const $=id=>document.getElementById(id);
   const nameEl=$('name'), stage=$('stage');
@@ -259,7 +285,7 @@ details[open] summary::after{content:"－"}
     pr.avail.forEach((mod,i)=>{ const d=pr.dists[i]; p.w[mod.id]=(p.w[mod.id]||0)*DECAY+(d[pm]-1/3); });
     p.rounds.push({p:pm,a:m,r});
     lastPred={dist:pr.dist,guess:pr.dist?argmax(pr.dist):null,actual:pm};
-    save();
+    save(); cloudWrite(store.name||'ゲスト');
     render({pm,m,r,why,conf});
   }
 
@@ -345,7 +371,7 @@ details[open] summary::after{content:"－"}
   let armed=false;
   $('reset').addEventListener('click',e=>{
     if(!armed){ armed=true; e.target.textContent='本当に消す？（もう一度タップ）'; setTimeout(()=>{armed=false;e.target.textContent='この名前の記録を消す';},3000); return; }
-    delete store.profiles[store.name||'ゲスト']; lastPred=null; save(); armed=false; e.target.textContent='この名前の記録を消す'; render(null);
+    delete store.profiles[store.name||'ゲスト']; lastPred=null; save(); cloudWrite(store.name||'ゲスト'); armed=false; e.target.textContent='この名前の記録を消す'; render(null);
   });
   window.addEventListener('resize',()=>drawTrend(prof().rounds));
   if(window.matchMedia){ try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>drawTrend(prof().rounds)); }catch(e){} }
@@ -355,6 +381,7 @@ details[open] summary::after{content:"－"}
     if(snap&&snap.lastPred) lastPred=snap.lastPred;
     nameEl.value=store.name||'';
     render(null);
+    cloudInit();
   }
   if(window.claude&&window.claude.hot){ try{ window.claude.hot.snapshot(()=>({store,lastPred})); }catch(e){} }
   (window.claude&&window.claude.hot&&window.claude.hot.ready)?window.claude.hot.ready(start):start(window.claude&&window.claude.hot?window.claude.hot.data:null);
