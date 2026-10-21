@@ -135,7 +135,7 @@ const MEMBERS = [
   {id:'katayama',  name:'片山', fixed:[1,2], pair:'onoe'},
   {id:'sekiguchi', name:'関口', fixed:[3,5], pair:'suda'},
   {id:'suda',      name:'須田', fixed:[3,5], pair:'sekiguchi'},
-  {id:'baba',      name:'馬場', fixed:[1,5]},
+  {id:'baba',      name:'馬場', fixed:[1]},
   {id:'kadono',    name:'門野', fixed:[2]},
   {id:'hirota',    name:'廣田', fixed:[3]},
 ];
@@ -156,7 +156,8 @@ let state = {rates:{}, leaves:{}, overrides:{}, base:{}};
 try{ const s=localStorage.getItem(KEY); if(s) state=Object.assign(state, JSON.parse(s)); }catch(e){}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 MEMBERS.forEach(m=>{ if(state.rates[m.id]==null) state.rates[m.id]=100; if(!state.leaves[m.id]) state.leaves[m.id]=[]; });
-if(!state.fixed) state.fixed={};
+const FIXED_VERSION=2; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
+if(!state.fixed||state.fixedVersion!==FIXED_VERSION){ state.fixed={}; state.fixedVersion=FIXED_VERSION; }
 MEMBERS.forEach(m=>{ if(!m.daily&&!state.fixed[m.id]) state.fixed[m.id]=(m.fixed||[]).slice(); });
 if(!state.base) state.base={};
 if(!state.base.month) state.base.month=thisMonth();
@@ -349,7 +350,7 @@ bd.addEventListener('change',()=>{ let v=Math.round(Number(bd.value)); if(!(v>=1
 document.getElementById('prev').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);render();};
 document.getElementById('next').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);render();};
 document.getElementById('today').onclick=()=>{const t=new Date();cur=new Date(t.getFullYear(),t.getMonth(),1);render();};
-document.getElementById('reset').onclick=()=>{ if(!confirm('出社率・休暇・手動指定をすべて消します。よろしいですか?')) return; state={rates:{},leaves:{},overrides:{},fixed:{},base:{month:thisMonth(),days:20}}; MEMBERS.forEach(m=>{state.rates[m.id]=100;state.leaves[m.id]=[];if(!m.daily)state.fixed[m.id]=(m.fixed||[]).slice();}); bm.value=state.base.month; bd.value=state.base.days; save(); renderFixed(); renderMembers(); render(); };
+document.getElementById('reset').onclick=()=>{ if(!confirm('出社率・休暇・手動指定をすべて消します。よろしいですか?')) return; state={rates:{},leaves:{},overrides:{},fixed:{},fixedVersion:FIXED_VERSION,base:{month:thisMonth(),days:20}}; MEMBERS.forEach(m=>{state.rates[m.id]=100;state.leaves[m.id]=[];if(!m.daily)state.fixed[m.id]=(m.fixed||[]).slice();}); bm.value=state.base.month; bd.value=state.base.days; save(); renderFixed(); renderMembers(); render(); };
 renderFixed(); renderMembers(); render();
 </script>
 </body>
