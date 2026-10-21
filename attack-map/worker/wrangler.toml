@@ -1,0 +1,6 @@
+name = "attack-map-radar-proxy"
+main = "radar-proxy.js"
+compatibility_date = "2025-06-01"
+# Secrets（wrangler secret put で設定）:
+#   CLOUDFLARE_API_TOKEN  … Radar: Read 権限の API トークン
+#   ALLOWED_ORIGIN        … 任意。ページのオリジン（カンマ区切り）。未設定なら全オリジン許可
