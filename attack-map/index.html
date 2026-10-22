@@ -25,9 +25,68 @@
   --jp:#f5d27a;
   --land:#1b2942;
   --land-line:#2c3d60;
+  --deep:#0b1120;          /* 入力欄・フィード行などの最も暗い面 */
+  --overlay:#0f172acc;     /* 地図上に重ねるボタン・凡例の背景 */
+  --row:#1b2640;           /* 表の罫線 */
+  --tipbg:#0b1120ee;
+  --map-bg:#0c1322;
+  --map-glow:#14203a;
+  --star:#ffffff;
+  --grid:#18233a;
+  --globe-grid:rgba(255,255,255,.07);
+  --ocean-1:#1d3158; --ocean-2:#0e1a33; --ocean-3:#070e1e;
+  --atmo:90,150,255;
+  --globe-land:#223455; --globe-land-line:#3a4f78;
+  --jp-land:#4a452c; --jp-land-flat:#3a3a2a;
+  --globe-rim:rgba(150,180,235,.4);
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",system-ui,sans-serif;
 }
+/* ── ライトテーマ（☀ ボタン、または端末設定が「ライト」で「自動」のとき） ── */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#eef2f8;
+  --surface:#ffffff;
+  --surface-2:#f1f4fa;
+  --line:#d3dae8;
+  --text:#18243a;
+  --text-2:#44536e;
+  --muted:#7a879e;
+  --l7:#2a6fcc;
+  --l3:#c84f1c;
+  --scan:#148a60;
+  --brute:#6f5fd6;
+  --warn:#a56b00;
+  --bad:#c94b4b;
+  --jp:#b8860b;
+  --deep:#e6ebf4;
+  --overlay:#ffffffd9;
+  --row:#e5eaf3;
+  --tipbg:#ffffffee;
+  --map-bg:#dfe7f3;
+  --map-glow:#cdd9ec;
+  --star:#9fb3d1;
+  --grid:#cbd5e6;
+  --globe-grid:rgba(20,40,80,.1);
+  --ocean-1:#a9c4e8; --ocean-2:#8fb0dc; --ocean-3:#7aa0d0;
+  --atmo:60,120,220;
+  --globe-land:#f2f5f9; --globe-land-line:#9fb0c8;
+  --land:#f7f9fc; --land-line:#aab8cc;
+  --jp-land:#f5e4b0; --jp-land-flat:#f5e4b0;
+  --globe-rim:rgba(40,80,140,.45);
+}
+:root[data-theme="light"] a{color:#1d5fb8}
+:root[data-theme="light"] .chip.live{color:#1f7a4f}
+:root[data-theme="light"] .chip.stale{color:#8a5d10}
+:root[data-theme="light"] .chip.demo{color:#5a4aa0}
+:root[data-theme="light"] .chip.err{color:#a33}
+:root[data-theme="light"] .btn.primary{background:#1c5cab;color:#fff}
+:root[data-theme="light"] ul.feed .ty.l7{color:#1f5aa8}
+:root[data-theme="light"] ul.feed .ty.l3{color:#a84216}
+:root[data-theme="light"] ul.feed .ty.scan{color:#0f6e4c}
+:root[data-theme="light"] ul.feed .ty.brute{color:#5a4aa0}
+:root[data-theme="light"] table.rank .trend.up{color:#c0392b}
+:root[data-theme="light"] table.rank .trend.down{color:#1f7a4f}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{
@@ -65,22 +124,23 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
 
 /* ── 地図 ─────────────────────────────── */
-.mapcard{position:relative;overflow:hidden;padding:0}
+.mapcard{overflow:hidden;padding:0}
+.mapstage{position:relative}
 #map{display:block;width:100%;height:auto;touch-action:pan-y pinch-zoom;cursor:grab;background:
-  radial-gradient(900px 500px at 70% 40%, #14203a 0%, transparent 70%), var(--bg)}
+  radial-gradient(900px 500px at 70% 40%, var(--map-glow) 0%, transparent 70%), var(--map-bg)}
 .maptoolbar{position:absolute;left:12px;top:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap}
 #map.dragging{cursor:grabbing}
-.mapcard.flat #spinSeg{display:none}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0f172acc;backdrop-filter:blur(4px)}
+.mapstage.flat #spinSeg{display:none}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--overlay);backdrop-filter:blur(4px)}
 .seg button{padding:5px 11px;font-size:12px;background:none;border:none;color:var(--text-2)}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--surface-2);color:var(--text);font-weight:600}
-.legend{position:absolute;left:12px;bottom:10px;display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--text-2);background:#0f172acc;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.legend{position:absolute;left:12px;bottom:10px;display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--text-2);background:var(--overlay);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
 .legend .dash{width:10px;height:10px;border-radius:50%;border:2px solid var(--jp);background:none}
 .mapnote{position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--muted);text-align:right;max-width:46%}
-.tip{position:absolute;pointer-events:none;display:none;background:#0b1120ee;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);white-space:nowrap;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.tip{position:absolute;pointer-events:none;display:none;background:var(--tipbg);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);white-space:nowrap;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.4)}
 .tip b{font-size:13px}
 .tip .v{font-family:var(--mono);color:var(--text-2)}
 .mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px;pointer-events:none}
@@ -105,10 +165,13 @@ h2 small{font-weight:400;letter-spacing:0;color:var(--muted);font-size:11px}
 table.rank{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
 table.rank th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:4px 14px 6px;border-bottom:1px solid var(--line)}
 table.rank th.n,table.rank td.n{text-align:right;font-family:var(--mono)}
-table.rank td{padding:5px 14px;border-bottom:1px solid #1b2640;vertical-align:middle;white-space:nowrap}
+table.rank td{padding:5px 14px;border-bottom:1px solid var(--row);vertical-align:middle;white-space:nowrap}
 table.rank tr:last-child td{border-bottom:none}
 table.rank tr{cursor:default}
 table.rank tr:hover td,table.rank tr.hl td{background:var(--surface-2)}
+table.rank tr.sel td{color:var(--jp)}
+table.rank tr.sel td .bar{background:var(--jp)}
+table.rank tr.dim td{opacity:.45}
 table.rank td.c{width:1%;color:var(--muted);font-family:var(--mono);font-size:12px}
 table.rank .flag{font-size:16px;margin-right:6px;vertical-align:-1px}
 table.rank .bar{height:6px;border-radius:3px;background:var(--l7);min-width:2px}
@@ -119,13 +182,13 @@ table.rank .trend.down{color:#9fe3bf}
 .rankfoot{padding:8px 14px 12px;font-size:11px;color:var(--muted)}
 #spark{display:block;width:100%;height:84px;margin:4px 0 0}
 .sparkwrap{position:relative;padding:0 10px 10px}
-.sparktip{position:absolute;display:none;top:6px;right:14px;font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:#0b1120dd;border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.sparktip{position:absolute;display:none;top:6px;right:14px;font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:var(--tipbg);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
 .victim{padding:8px 14px 12px;font-size:12.5px}
 .victim h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:8px 0 4px}
 .victim .row{display:grid;grid-template-columns:minmax(0,1fr) 90px 52px;gap:8px;align-items:center;padding:3px 0}
 .victim .row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .victim .row .nm.mono{font-family:var(--mono);font-size:12px}
-.victim .row .bw{height:6px;background:#0b1120;border-radius:3px;overflow:hidden}
+.victim .row .bw{height:6px;background:var(--deep);border-radius:3px;overflow:hidden}
 .victim .row .bw i{display:block;height:100%;background:var(--l7);border-radius:3px}
 .victim .row .bw i.ver{background:var(--scan)}
 .victim .row .bw i.host{background:var(--l3)}
@@ -133,11 +196,11 @@ table.rank .trend.down{color:#9fe3bf}
 .victim h3 small{font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)}
 .victim .row .v{font-family:var(--mono);text-align:right;color:var(--text-2)}
 .victim .note{color:var(--muted);font-size:11.5px;line-height:1.6;margin-top:6px}
-.victim .note code{font-family:var(--mono);font-size:11px;background:#0b1120;padding:1px 5px;border-radius:4px}
+.victim .note code{font-family:var(--mono);font-size:11px;background:var(--deep);padding:1px 5px;border-radius:4px}
 .victim .empty{color:var(--text-2);font-size:12px;line-height:1.7}
 ul.feed{list-style:none;padding:6px 8px 10px;font-family:var(--mono);font-size:12px;max-height:290px;overflow:auto}
 ul.feed li{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:6px;animation:fade .3s ease}
-ul.feed li:nth-child(odd){background:#0f172a80}
+ul.feed li:nth-child(odd){background:var(--surface-2)}
 ul.feed .t{color:var(--muted)}
 ul.feed .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--sans)}
 ul.feed .ty{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid}
@@ -152,7 +215,7 @@ details.settings{margin-top:14px;padding:0 14px 12px}
 details.settings summary{cursor:pointer;padding:12px 0;font-weight:600;color:var(--text-2);letter-spacing:.06em}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 16px}
 .form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-2)}
-.form input,.form select{background:#0b1120;border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;color:var(--text)}
+.form input,.form select{background:var(--deep);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;color:var(--text)}
 .form input[type=range]{padding:0}
 .form .help{font-size:11px;color:var(--muted)}
 .form .actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
@@ -160,6 +223,102 @@ details.settings summary{cursor:pointer;padding:12px 0;font-weight:600;color:var
 .btn.primary{background:#1c5cab;border-color:#1c5cab;color:#fff}
 .msg{font-size:12px;color:var(--text-2);margin-top:8px;font-family:var(--mono);white-space:pre-wrap}
 .msg.err{color:#ffb3b3}
+/* ── 凡例＝攻撃種別フィルタ ───────────────── */
+.legend button{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:inherit;padding:1px 2px;border-radius:5px;font-size:inherit}
+.legend button:hover{background:var(--surface-2)}
+.legend button.off{opacity:.38;text-decoration:line-through}
+.legend button i{transition:opacity .2s}
+
+/* ── 国フィルタ ───────────────────────── */
+.filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface)}
+.filterbar .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.filterbar input{background:var(--deep);border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-size:12.5px;min-width:150px;flex:1 1 150px;max-width:260px}
+.filterbar .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--text-2);white-space:nowrap}
+.fchip:hover{color:var(--text);border-color:var(--muted)}
+.fchip.on{background:var(--jp);border-color:var(--jp);color:#1b1a12;font-weight:600}
+.fchip .x{opacity:.7;font-size:11px}
+.filterbar .sum{font-size:11.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.filterbar .linkbtn{background:none;border:none;color:#7fb2f0;font-size:12px;padding:2px 4px;text-decoration:underline}
+.cands{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px;background:var(--surface)}
+.cands:empty{display:none}
+
+/* ── タイムライン（時間帯別の再生） ─────────────── */
+.timeline{padding:10px 12px 12px;border-top:1px solid var(--line);background:var(--surface);display:grid;gap:6px}
+.timeline .row1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.timeline .title{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.timeline .tbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:7px;padding:4px 10px;font-size:12.5px;color:var(--text);white-space:nowrap}
+.timeline .tbtn.on{background:#1c5cab;border-color:#1c5cab;color:#fff}
+.timeline select{background:var(--deep);border:1px solid var(--line);border-radius:7px;padding:4px 6px;font-size:12px}
+.timeline .tnow{font-family:var(--mono);font-size:13px;color:var(--text);margin-left:auto;white-space:nowrap}
+.timeline .tnow.rep{color:var(--jp)}
+.timeline .bars{position:relative;height:38px;display:flex;align-items:flex-end;gap:1px;cursor:pointer;padding:0 2px}
+.timeline .bars i{flex:1 1 0;background:var(--l7);opacity:.35;border-radius:1px 1px 0 0;min-height:2px;transition:opacity .15s}
+.timeline .bars i.past{opacity:.75}
+.timeline .bars i.cur{opacity:1;background:var(--jp)}
+.timeline input[type=range]{width:100%;margin:0;accent-color:var(--jp)}
+.timeline .ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.timeline .hint{font-size:11px;color:var(--muted)}
+.replaybadge{display:none;position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--jp);color:#1b1a12;font-weight:700;font-size:11.5px;letter-spacing:.12em;padding:3px 12px;border-radius:999px;z-index:4;pointer-events:none}
+.mapstage.replay .replaybadge{display:block}
+
+/* ── 上位ランキングパネル ────────────────── */
+.top5{padding:8px 14px 12px}
+.top5 .tabs{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:4px 0 8px}
+.top5 .tabs button{padding:4px 10px;font-size:12px;background:none;border:none;color:var(--text-2)}
+.top5 .tabs button+button{border-left:1px solid var(--line)}
+.top5 .tabs button.on{background:var(--surface-2);color:var(--text);font-weight:600}
+.top5 .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.top5 .col h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 4px;display:flex;align-items:center;gap:6px}
+.top5 .col h3 i{width:10px;height:3px;border-radius:2px;display:inline-block}
+.top5 .it{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:center;font-size:12.5px;padding:3px 0;border-radius:5px}
+.top5 .it .r{color:var(--muted);font-family:var(--mono);font-size:11px}
+.top5 .it .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top5 .it .nm .en{color:var(--muted);font-size:10.5px;margin-left:3px}
+.top5 .it .v{font-family:var(--mono);font-size:12px;color:var(--text-2)}
+.top5 .it .bw{grid-column:2/4;height:4px;background:var(--deep);border-radius:2px;overflow:hidden;margin-top:-1px}
+.top5 .it .bw b{display:block;height:100%;border-radius:2px}
+.top5 .it.click{cursor:pointer}
+.top5 .it.click:hover{background:var(--surface-2)}
+.top5 .it.sel .nm{color:var(--jp);font-weight:600}
+.top5 .empty{color:var(--muted);font-size:12px}
+.top5 .note{font-size:11px;color:var(--muted);margin-top:6px}
+
+/* ── テーマ切替 ───────────────────────── */
+.theme{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.theme button{background:none;border:none;padding:3px 9px;font-size:12px;color:var(--text-2);line-height:1.4}
+.theme button+button{border-left:1px solid var(--line)}
+.theme button.on{background:var(--surface-2);color:var(--text);font-weight:600}
+
+/* ── モバイル ───────────────────────── */
+@media (max-width:640px){
+  body{padding:10px 10px 28px;font-size:13.5px}
+  header{padding:2px 0 8px}
+  header h1{font-size:18px}
+  header .sub{letter-spacing:.2em;font-size:10px}
+  .statusbar{font-size:11.5px;gap:6px}
+  #clock{font-size:12px}
+  .seg button{padding:7px 10px;font-size:12.5px}
+  .tiles{grid-template-columns:repeat(2,1fr);gap:6px;padding:10px}
+  .tile .v{font-size:18px}
+  table.rank{font-size:12.5px}
+  table.rank th,table.rank td{padding-left:10px;padding-right:10px}
+  table.rank .barwrap{min-width:40px}
+  table.rank th:nth-child(5),table.rank td:nth-child(5){display:none}
+  ul.feed{max-height:220px;font-size:11.5px}
+  ul.feed li{grid-template-columns:56px 1fr auto;gap:6px}
+  .filterbar input{max-width:none}
+  .filterbar .sum{margin-left:0;flex-basis:100%;white-space:normal}
+  .timeline .tnow{margin-left:0;flex-basis:100%}
+  .top5 .cols{grid-template-columns:1fr}
+  .victim .row{grid-template-columns:minmax(0,1fr) 64px 48px}
+  .form{grid-template-columns:1fr}
+  details.settings{padding:0 12px 10px}
+  footer{padding:12px;font-size:11.5px}
+}
+@media (hover:none){
+  table.rank tr{cursor:pointer}
+}
 footer{margin-top:14px;padding:14px;font-size:12px;color:var(--text-2);line-height:1.7}
 footer h3{font-size:12.5px;color:var(--text);margin-bottom:4px;letter-spacing:.06em}
 footer ul{padding-left:1.3em}
@@ -177,11 +336,17 @@ footer li{margin:2px 0}
     <span id="srcChip" class="chip"><span class="dot"></span><span id="srcText">初期化中…</span></span>
     <span class="chip"><span id="updText">最終更新 —</span></span>
     <span id="clock" aria-label="日本時間">--:--:--</span>
+    <span class="theme" role="group" aria-label="配色">
+      <button data-theme="auto" title="端末の設定に合わせる">自動</button>
+      <button data-theme="dark" title="ダーク">🌙</button>
+      <button data-theme="light" title="ライト">☀️</button>
+    </span>
   </div>
 </header>
 
 <main>
   <section class="card mapcard" aria-label="世界地図">
+    <div class="mapstage">
     <canvas id="map" role="img" aria-label="日本に向かう攻撃の送信元国を示す世界地図"></canvas>
     <div class="maptoolbar">
       <div class="seg" role="group" aria-label="表示する攻撃種別">
@@ -203,16 +368,39 @@ footer li{margin:2px 0}
         <button id="toJapan" title="日本を正面にする">🎯 日本</button>
       </div>
     </div>
-    <div class="legend" aria-label="凡例">
-      <span><i style="background:var(--l7)"></i>L7 HTTP DDoS</span>
-      <span><i style="background:var(--l3)"></i>L3/4 DDoS</span>
-      <span><i style="background:var(--scan)"></i>スキャン/探索</span>
-      <span><i style="background:var(--brute)"></i>認証攻撃</span>
+    <div class="legend" aria-label="凡例（クリックで攻撃種別を表示/非表示）">
+      <button data-type="l7" title="クリックで表示/非表示"><i style="background:var(--l7)"></i>L7 HTTP DDoS</button>
+      <button data-type="l3" title="クリックで表示/非表示"><i style="background:var(--l3)"></i>L3/4 DDoS</button>
+      <button data-type="scan" title="クリックで表示/非表示"><i style="background:var(--scan)"></i>スキャン/探索</button>
+      <button data-type="brute" title="クリックで表示/非表示"><i style="background:var(--brute)"></i>認証攻撃</button>
       <span><i class="dash"></i>標的: 日本</span>
     </div>
+    <div class="replaybadge" id="replayBadge">▶ 再生中</div>
     <div class="mapnote" id="mapNote"></div>
     <div class="tip" id="tip"></div>
     <div class="mapmsg" id="mapMsg">地図データを読み込み中…</div>
+    </div>
+    <div class="filterbar" id="filterbar">
+      <span class="lbl">国フィルタ</span>
+      <input id="fSearch" type="search" placeholder="国名・コードで絞り込み（例: 中国, US）" autocomplete="off" aria-label="国名で検索">
+      <div class="chips" id="fChips"></div>
+      <span class="sum" id="fSum">すべての送信元を表示中 · ランキングの行や地図の点をクリックでも選べます</span>
+      <button class="linkbtn" id="fClear" hidden>解除</button>
+    </div>
+    <div class="cands" id="fCands"></div>
+    <div class="timeline" id="timeline" hidden>
+      <div class="row1">
+        <span class="title">タイムライン</span>
+        <button class="tbtn" id="tlPlay" title="直近の期間を時間帯ごとに再生">▶ 再生</button>
+        <select id="tlSpeed" aria-label="再生速度"><option value="1">1x（1時間=2秒）</option><option value="2" selected>2x</option><option value="4">4x</option><option value="8">8x</option></select>
+        <button class="tbtn" id="tlLive" title="再生をやめて現在の表示に戻る" hidden>⏹ ライブに戻る</button>
+        <span class="tnow" id="tlNow">—</span>
+      </div>
+      <div class="bars" id="tlBars" aria-hidden="true"></div>
+      <input id="tlRange" type="range" min="0" max="0" value="0" step="1" aria-label="再生位置">
+      <div class="ticks" id="tlTicks"></div>
+      <div class="hint" id="tlHint">L7 攻撃量の時系列に合わせて矢印の量が変わります。国別の内訳は、このブラウザで取得した時刻ごとのスナップショットがあればそれに切り替わります。</div>
+    </div>
   </section>
 
   <aside class="panel">
@@ -222,6 +410,18 @@ footer li{margin:2px 0}
         <div class="tile"><div class="k">送信元 国・地域</div><div class="v"><span id="tCountries">—</span></div><div class="s" id="tCountriesS">ランキング掲載数</div></div>
         <div class="tile"><div class="k">1位のシェア</div><div class="v"><span id="tTop">—</span></div><div class="s" id="tTopS">—</div></div>
         <div class="tile"><div class="k">上位3か国 合計</div><div class="v"><span id="tTop3">—</span></div><div class="s" id="tTop3S">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>上位ランキング <small>TOP 5</small></h2>
+      <div class="top5" id="top5">
+        <div class="tabs" role="group" aria-label="ランキングの種類">
+          <button data-top="src" class="on">攻撃元</button>
+          <button data-top="dst">攻撃先</button>
+        </div>
+        <div class="cols" id="top5Cols"></div>
+        <div class="note" id="top5Note"></div>
       </div>
     </div>
 
@@ -434,13 +634,41 @@ const fmtDateTime = (d) => d.toLocaleString('ja-JP', {hour12:false, timeZone:'As
 /* ════════════════════════════════════════════════════════════════════
    設定
    ════════════════════════════════════════════════════════════════════ */
-const DEFAULTS = {mode:'auto', token:'', proxy:'', custom:'', range:'1d', interval:5, rate:90, mapMode:'globe', spin:'orbit'};
+const DEFAULTS = {mode:'auto', token:'', proxy:'', custom:'', range:'1d', interval:5, rate:90, mapMode:'globe', spin:'orbit', theme:'auto'};
+const HISTORY_KEY = 'attackmap.history.v1';
+const HISTORY_MAX = 96; // このブラウザで取得したスナップショットの保持数（タイムライン再生用）
 function loadSettings(){
   try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
   catch { return {...DEFAULTS}; }
 }
 function saveSettings(s){ try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} }
 let settings = loadSettings();
+
+/* ── テーマ（ダーク / ライト / 自動） ──────────────────── */
+const T = {}; // 地図描画に使う色。CSS 変数から読む
+function hexRGB(hex, fb){ const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return fb; const n = parseInt(m[1], 16); return `${n >> 16},${(n >> 8) & 255},${n & 255}`; }
+const lightMQ = matchMedia('(prefers-color-scheme: light)');
+function readThemeColors(){
+  const cs = getComputedStyle(document.documentElement);
+  const v = (k) => cs.getPropertyValue(k).trim();
+  Object.assign(T, {star:v('--star'), grid:v('--grid'), globeGrid:v('--globe-grid'), ocean1:v('--ocean-1'), ocean2:v('--ocean-2'), ocean3:v('--ocean-3'),
+    atmo:v('--atmo') || '90,150,255', land:v('--land'), landLine:v('--land-line'), globeLand:v('--globe-land'), globeLandLine:v('--globe-land-line'),
+    jpLand:v('--jp-land'), jpLandFlat:v('--jp-land-flat'), jp:v('--jp'), rim:v('--globe-rim'), surface:v('--surface'), l7:v('--l7'), line:v('--line'), muted:v('--muted'),
+    isLight: document.documentElement.dataset.theme === 'light'});
+  T.jpRGB = hexRGB(T.jp, '245,210,122'); T.l7RGB = hexRGB(T.l7, '57,135,229');
+}
+function applyTheme(){
+  const t = ['dark', 'light', 'auto'].includes(settings.theme) ? settings.theme : 'auto';
+  const resolved = t === 'auto' ? (lightMQ.matches ? 'light' : 'dark') : t;
+  document.documentElement.dataset.theme = resolved;
+  document.querySelector('meta[name=theme-color]').setAttribute('content', resolved === 'light' ? '#eef2f8' : '#0c1322');
+  document.querySelectorAll('.theme [data-theme]').forEach(b => b.classList.toggle('on', b.dataset.theme === t));
+  readThemeColors();
+  if (W){ resize(); drawSpark(); renderTimeline(); }
+}
+function setTheme(t){ settings.theme = t; saveSettings(settings); applyTheme(); }
+document.querySelectorAll('.theme [data-theme]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.theme)));
+lightMQ.addEventListener('change', () => { if (settings.theme === 'auto') applyTheme(); });
 
 function fillForm(){
   $('#sMode').value = settings.mode; $('#sToken').value = settings.token; $('#sProxy').value = settings.proxy;
@@ -513,7 +741,11 @@ function normalizeSnapshot(raw, label){
 }
 function demoSnapshot(){
   const l7 = normList(Object.entries(DEMO_WEIGHTS).map(([code, share]) => ({code, share})));
-  return {label:'デモ（公開統計の傾向を参考にした参考値）', kind:'demo', generatedAt:null, dateRange:null, l7, l3:null, series:null, errors:[], provider:'demo',
+  // デモ用の時系列（直近 24 時間・15 分刻み）。夜間に多く昼間に少ない波形を決め打ちで生成する
+  const end = Math.floor(Date.now() / 900e3) * 900e3, timestamps = [], values = [];
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 96; i >= 0; i--){ const t = end - i * 900e3; const h = (new Date(t).getUTCHours() + 9) % 24; timestamps.push(new Date(t).toISOString()); values.push(Math.max(.05, .45 + .35 * Math.cos((h - 2) / 24 * Math.PI * 2) + (rnd() - .5) * .25)); }
+  return {label:'デモ（公開統計の傾向を参考にした参考値）', kind:'demo', generatedAt:null, dateRange:null, l7, l3:null, series:{timestamps, values}, errors:[], provider:'demo',
     industries: normNamed(DEMO_INDUSTRIES.map(([name, share]) => ({name, share}))), verticals: normNamed(DEMO_VERTICALS.map(([name, share]) => ({name, share}))), targets:null};
 }
 
@@ -618,10 +850,37 @@ async function loadSnapshot(){
    状態
    ════════════════════════════════════════════════════════════════════ */
 const state = {
-  snapshot: null, view:'all', list: [], cum: [], cumTotal: 0,
+  snapshot: null, view:'all', all: [], list: [], cum: [], cumTotal: 0,
   particles: [], pulses: [], feed: [], paused: false, hover: null, lastTick: 0, acc: 0, timer: null,
-  hoverCode: null
+  hoverCode: null,
+  filter: {countries: new Set(), types: new Set(['l7', 'l3', 'scan', 'brute'])},
+  replay: {on: false, playing: false, idx: 0, speed: 2, acc: 0, snap: null},
+  top: 'src'
 };
+
+/* ── スナップショット履歴（タイムライン再生で国別内訳を時刻ごとに切り替えるため、このブラウザに保存） ── */
+function loadHistory(){ try { const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch { return []; } }
+function recordHistory(snap){
+  if (!snap || snap.kind === 'demo' || !snap.generatedAt) return;
+  const stamp = snap.generatedAt.toISOString();
+  const h = loadHistory().filter(x => x && x.stamp !== stamp && x.key === (snap.provider || snap.label));
+  const slim = (l) => l ? l.slice(0, 20).map(x => [x.code, Math.round(x.share * 1000) / 1000]) : null;
+  h.push({stamp, key: snap.provider || snap.label, l7: slim(snap.l7), l3: slim(snap.l3)});
+  h.sort((a, b) => a.stamp < b.stamp ? -1 : 1);
+  while (h.length > HISTORY_MAX) h.shift();
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch {}
+}
+/* 指定時刻に最も近い（それ以前の）履歴を、スナップショット風のオブジェクトにして返す */
+function historyAt(time){
+  const snap = state.snapshot; if (!snap || snap.kind === 'demo') return null;
+  const h = loadHistory().filter(x => x.key === (snap.provider || snap.label));
+  if (h.length < 2) return null;
+  const t = time.getTime(); let best = null;
+  for (const x of h){ const ts = Date.parse(x.stamp); if (ts <= t + 30 * 60e3) best = x; else break; }
+  if (!best) best = h[0];
+  const expand = (l) => l ? l.map(([code, share]) => ({code, name: null, share})) : null;
+  return {stamp: best.stamp, l7: expand(best.l7), l3: expand(best.l3)};
+}
 
 function viewList(snap, view){
   if (!snap) return [];
@@ -635,10 +894,61 @@ function viewList(snap, view){
   return [...m.values()].sort((a, b) => b.share - a.share);
 }
 function rebuildList(){
-  state.list = viewList(state.snapshot, state.view).filter(x => x.share > 0).slice(0, 20);
+  const src = state.replay.on && state.replay.snap ? state.replay.snap : state.snapshot;
+  state.all = viewList(src, state.view).filter(x => x.share > 0).slice(0, 20);
+  const sel = state.filter.countries;
+  state.list = sel.size ? state.all.filter(x => sel.has(x.code)) : state.all;
   let t = 0; state.cum = state.list.map(x => (t += x.share)); state.cumTotal = t;
-  renderRanking(); renderTiles(); drawSpark();
+  renderRanking(); renderTiles(); drawSpark(); renderFilter(); renderTop5();
 }
+/* ── 国フィルタ ──────────────────────────── */
+function toggleCountry(code){
+  const sel = state.filter.countries;
+  if (sel.has(code)) sel.delete(code); else sel.add(code);
+  rebuildList();
+}
+function clearCountries(){ state.filter.countries.clear(); $('#fSearch').value = ''; rebuildList(); }
+function chipHtml(c, on){ return `<button class="fchip${on ? ' on' : ''}" data-code="${c.code}" title="${on ? 'クリックで解除' : 'クリックで絞り込み'}">${flag(c.code)} ${nameOf(c.code, c.name)}${on ? '<span class="x">✕</span>' : ''}</button>`; }
+function renderFilter(){
+  const sel = state.filter.countries, chips = $('#fChips'), sum = $('#fSum');
+  const known = new Map(state.all.map(c => [c.code, c]));
+  for (const code of sel) if (!known.has(code)) known.set(code, {code, name: null, share: 0});
+  // 選択中の国はすべて表示し、残りは上位 8 か国を候補として並べる
+  const top = state.all.filter(c => !sel.has(c.code)).slice(0, sel.size ? 5 : 8);
+  chips.innerHTML = [...sel].map(code => chipHtml(known.get(code), true)).join('') + top.map(c => chipHtml(c, false)).join('');
+  chips.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () => toggleCountry(b.dataset.code)));
+  $('#fClear').hidden = !sel.size;
+  if (!sel.size) sum.textContent = 'すべての送信元を表示中 · ランキングの行や地図の点をクリックでも選べます';
+  else {
+    const total = state.list.reduce((s, x) => s + x.share, 0), missing = [...sel].filter(code => !state.all.some(c => c.code === code));
+    sum.textContent = `${sel.size} か国に絞り込み中（シェア合計 ${fmtPct(total)}%）` + (missing.length ? ` · ${missing.map(c => nameOf(c)).join('・')}は現在のデータにありません` : '');
+  }
+  renderCandidates();
+}
+function renderCandidates(){
+  const q = $('#fSearch').value.trim().toLowerCase(), box = $('#fCands');
+  if (!q){ box.innerHTML = ''; return; }
+  const sel = state.filter.countries;
+  const pool = new Map(state.all.map(c => [c.code, c]));
+  for (const [code, [ja]] of Object.entries(COUNTRIES)) if (!pool.has(code) && code !== 'XX' && code !== 'T1') pool.set(code, {code, name: ja, share: 0});
+  const hits = [...pool.values()].filter(c => c.code.toLowerCase() === q || c.code.toLowerCase().startsWith(q) || nameOf(c.code, c.name).toLowerCase().includes(q) || String(c.name || '').toLowerCase().includes(q))
+    .sort((a, b) => (b.share - a.share) || a.code.localeCompare(b.code)).slice(0, 12);
+  box.innerHTML = hits.length ? hits.map(c => chipHtml(c, sel.has(c.code))).join('') : '<span class="hint" style="font-size:11.5px;color:var(--muted)">該当する国がありません</span>';
+  box.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () => { toggleCountry(b.dataset.code); }));
+}
+$('#fSearch').addEventListener('input', renderCandidates);
+$('#fSearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter'){ const first = $('#fCands .fchip'); if (first){ toggleCountry(first.dataset.code); $('#fSearch').value = ''; renderCandidates(); } }
+  if (e.key === 'Escape'){ $('#fSearch').value = ''; renderCandidates(); }
+});
+$('#fClear').addEventListener('click', clearCountries);
+/* ── 攻撃種別フィルタ（凡例をクリック） ──────────── */
+document.querySelectorAll('.legend [data-type]').forEach(b => b.addEventListener('click', () => {
+  const t = b.dataset.type, set = state.filter.types;
+  if (set.has(t)) set.delete(t); else set.add(t);
+  b.classList.toggle('off', !set.has(t));
+  state.particles = state.particles.filter(p => set.has(p.type));
+}));
 function pickCountry(){
   if (!state.list.length) return null;
   const r = Math.random() * state.cumTotal;
@@ -646,13 +956,19 @@ function pickCountry(){
   return state.list[state.list.length - 1];
 }
 function pickType(){
-  const snap = state.snapshot;
-  if (!snap || snap.kind === 'demo'){ const r = Math.random(); return r < .58 ? 'scan' : r < .78 ? 'l7' : r < .9 ? 'l3' : 'brute'; }
-  if (state.view === 'l7') return 'l7';
-  if (state.view === 'l3') return 'l3';
-  if (!snap.l3) return 'l7';
-  if (!snap.l7) return 'l3';
-  return Math.random() < .68 ? 'l7' : 'l3';
+  const snap = state.snapshot, on = state.filter.types;
+  if (!on.size) return null;
+  // データ上あり得る種別と、その重み
+  let cand;
+  if (!snap || snap.kind === 'demo') cand = [['scan', .58], ['l7', .2], ['l3', .12], ['brute', .1]];
+  else if (state.view === 'l7' || !snap.l3) cand = [['l7', 1]];
+  else if (state.view === 'l3' || !snap.l7) cand = [['l3', 1]];
+  else cand = [['l7', .68], ['l3', .32]];
+  cand = cand.filter(([t]) => on.has(t));
+  if (!cand.length) return null;
+  const total = cand.reduce((s, x) => s + x[1], 0); let r = Math.random() * total;
+  for (const [t, w] of cand){ if ((r -= w) <= 0) return t; }
+  return cand[cand.length - 1][0];
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -729,7 +1045,7 @@ function projLL(lon, lat, m, lift){ const v = ll2xyz(lon, lat); return projXYZ(v
 function renderBase(){
   base = document.createElement('canvas'); base.width = Math.round(W * dpr); base.height = Math.round(H * dpr);
   const b = base.getContext('2d'); b.scale(dpr, dpr);
-  b.strokeStyle = '#18233a'; b.lineWidth = 1;
+  b.strokeStyle = T.grid; b.lineWidth = 1;
   for (let lon = -180; lon <= 180; lon += 30){ b.beginPath(); b.moveTo(baseX(lon), 0); b.lineTo(baseX(lon), H); b.stroke(); }
   for (let lat = -60; lat <= 80; lat += 20){ b.beginPath(); b.moveTo(0, projY(lat)); b.lineTo(W, projY(lat)); b.stroke(); }
   if (!polys) return;
@@ -739,9 +1055,9 @@ function renderBase(){
     const isJP = p.id === '392';
     b.beginPath();
     for (const r of p.rings){ r.forEach(([lon, lat], i) => { const x = baseX(lon), y = projY(lat); i ? b.lineTo(x, y) : b.moveTo(x, y); }); b.closePath(); }
-    b.fillStyle = isJP ? '#3a3a2a' : '#1b2942';
+    b.fillStyle = isJP ? T.jpLandFlat : T.land;
     b.fill('evenodd');
-    b.strokeStyle = isJP ? '#f5d27a' : '#2c3d60'; b.lineWidth = isJP ? 1.2 : .6; b.stroke();
+    b.strokeStyle = isJP ? T.jp : T.landLine; b.lineWidth = isJP ? 1.2 : .6; b.stroke();
   }
 }
 function renderStars(){
@@ -749,7 +1065,7 @@ function renderStars(){
   const b = stars.getContext('2d'); b.scale(dpr, dpr);
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const n = Math.round(W * H / 2600);
-  for (let i = 0; i < n; i++){ const x = rnd() * W, y = rnd() * H, r = rnd() * 1.1 + .2; b.globalAlpha = .25 + rnd() * .55; b.fillStyle = rnd() < .15 ? '#cfe0ff' : '#ffffff'; b.beginPath(); b.arc(x, y, r, 0, Math.PI * 2); b.fill(); }
+  for (let i = 0; i < n; i++){ const x = rnd() * W, y = rnd() * H, r = rnd() * 1.1 + .2; b.globalAlpha = (T.isLight ? .18 : .25) + rnd() * (T.isLight ? .3 : .55); b.fillStyle = rnd() < .15 ? (T.isLight ? '#7f9ccc' : '#cfe0ff') : T.star; b.beginPath(); b.arc(x, y, r, 0, Math.PI * 2); b.fill(); }
   b.globalAlpha = 1;
 }
 function resize(){
@@ -791,7 +1107,7 @@ function colorOf(type){ return getComputedStyle(document.documentElement).getPro
 function spawn(){
   const c = pickCountry(); if (!c) return;
   const geo = COUNTRIES[c.code]; if (!geo || (geo[1] === 0 && geo[2] === 0)) return;
-  const type = pickType();
+  const type = pickType(); if (!type) return;
   const sLL = [geo[2] + (Math.random() - .5) * 2, geo[1] + (Math.random() - .5) * 2];
   const dLL = [JP_LL[0] + (Math.random() - .5) * 1.2, JP_LL[1] + (Math.random() - .5) * 1.2];
   const now = performance.now();
@@ -809,7 +1125,7 @@ function spawn(){
   }
   state.particles.push(p);
   if (state.particles.length > 220) state.particles.splice(0, state.particles.length - 220);
-  pushFeed({code: c.code, name: c.name, type, time: new Date()});
+  pushFeed({code: c.code, name: c.name, type, time: displayTime()});
 }
 function bez(p, t){
   const u = 1 - t;
@@ -850,7 +1166,7 @@ function drawParticles(now, m){
       prev = pt;
     }
     ctx.globalAlpha = 1;
-    if (prev[2]){ ctx.beginPath(); ctx.arc(prev[0], prev[1], 2.2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); }
+    if (prev[2]){ ctx.beginPath(); ctx.arc(prev[0], prev[1], 2.2, 0, Math.PI * 2); ctx.fillStyle = T.isLight ? '#18243a' : '#fff'; ctx.fill(); }
   }
   state.particles = alive;
   const keep = [];
@@ -868,14 +1184,16 @@ function drawDot(x, y, r, c, depth){
   const hl = state.hoverCode === c.code;
   const fade = depth == null ? 1 : Math.min(1, .35 + depth);
   ctx.globalAlpha = fade;
-  ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fillStyle = hl ? 'rgba(245,210,122,.35)' : 'rgba(245,210,122,.12)'; ctx.fill();
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = hl ? '#fff1c2' : 'rgba(245,210,122,.85)'; ctx.fill();
+  const sel = state.filter.countries.size && state.filter.countries.has(c.code);
+  ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fillStyle = hl || sel ? `rgba(${T.jpRGB},.35)` : `rgba(${T.jpRGB},.12)`; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = hl ? (T.isLight ? '#8a6508' : '#fff1c2') : `rgba(${T.jpRGB},.85)`; ctx.fill();
+  if (sel){ ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.strokeStyle = T.jp; ctx.lineWidth = 1.5; ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
 function drawJapan(x, y){
-  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = '#f5d27a'; ctx.fill();
-  ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(245,210,122,.6)'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.font = `600 ${Math.max(11, W / 80)}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillStyle = '#f5d27a'; ctx.textBaseline = 'middle';
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = T.jp; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.strokeStyle = `rgba(${T.jpRGB},.6)`; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.font = `600 ${Math.max(11, W / 80)}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillStyle = T.jp; ctx.textBaseline = 'middle';
   ctx.fillText('日本 JAPAN', x + 14, y - 2);
 }
 
@@ -927,15 +1245,15 @@ function drawGlobe(now){
   if (stars) ctx.drawImage(stars, 0, 0, W, H);
   // 大気のにじみ
   let g = ctx.createRadialGradient(cx, cy, R * .96, cx, cy, R * 1.14);
-  g.addColorStop(0, 'rgba(90,150,255,.32)'); g.addColorStop(.6, 'rgba(90,150,255,.08)'); g.addColorStop(1, 'rgba(90,150,255,0)');
+  g.addColorStop(0, `rgba(${T.atmo},.32)`); g.addColorStop(.6, `rgba(${T.atmo},.08)`); g.addColorStop(1, `rgba(${T.atmo},0)`);
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.14, 0, Math.PI * 2); ctx.fill();
   // 海
   g = ctx.createRadialGradient(cx - R * .38, cy - R * .38, R * .05, cx, cy, R);
-  g.addColorStop(0, '#1d3158'); g.addColorStop(.7, '#0e1a33'); g.addColorStop(1, '#070e1e');
+  g.addColorStop(0, T.ocean1); g.addColorStop(.7, T.ocean2); g.addColorStop(1, T.ocean3);
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
   // 経緯線
-  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = T.globeGrid; ctx.lineWidth = 1;
   for (let lon = -180; lon < 180; lon += 30) strokeGeoLine(v => [lon, v], -85, 85, 2.5, m);
   for (let lat = -60; lat <= 60; lat += 30) strokeGeoLine(v => [v, lat], -180, 180, 2.5, m);
   // 陸地
@@ -947,13 +1265,13 @@ function drawGlobe(now){
       const isJP = p.id === '392';
       ctx.beginPath();
       for (const r of rings){ if (!r) continue; ctx.moveTo(r[0], r[1]); for (let i = 1; i < r.length / 2; i++) ctx.lineTo(r[i * 2], r[i * 2 + 1]); ctx.closePath(); }
-      ctx.fillStyle = isJP ? '#4a452c' : '#223455'; ctx.fill('evenodd');
-      ctx.strokeStyle = isJP ? '#f5d27a' : '#3a4f78'; ctx.lineWidth = isJP ? 1.3 : .7; ctx.stroke();
+      ctx.fillStyle = isJP ? T.jpLand : T.globeLand; ctx.fill('evenodd');
+      ctx.strokeStyle = isJP ? T.jp : T.globeLandLine; ctx.lineWidth = isJP ? 1.3 : .7; ctx.stroke();
     }
   }
   // 縁の陰影
   g = ctx.createRadialGradient(cx, cy, R * .78, cx, cy, R);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)');
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, T.isLight ? 'rgba(20,40,80,.22)' : 'rgba(0,0,0,.45)');
   ctx.fillStyle = g; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
   ctx.restore();
   // 送信元の点
@@ -968,7 +1286,7 @@ function drawGlobe(now){
   const jp = projLL(JP_LL[0], JP_LL[1], m);
   if (jp[2] > 0) drawJapan(jp[0], jp[1]);
   // 輪郭
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,235,.4)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = T.rim; ctx.lineWidth = 1; ctx.stroke();
 }
 
 function frame(now){
@@ -976,7 +1294,8 @@ function frame(now){
   if (!mapReady) return;
   const dt = state.lastTick ? Math.min(100, now - state.lastTick) : 16; state.lastTick = now;
   if (!state.paused && !document.hidden){
-    state.acc += dt / 1000 * settings.rate / 60;
+    stepReplay(dt);
+    state.acc += dt / 1000 * settings.rate / 60 * replayRateScale();
     let n = 0; while (state.acc >= 1 && n < 10){ spawn(); state.acc -= 1; n++; }
     if (state.acc > 10) state.acc = 0;
   }
@@ -989,17 +1308,23 @@ function frame(now){
 /* ── ホバー・ドラッグ ─────────────────────────── */
 const tip = $('#tip');
 function hideTip(){ tip.style.display = 'none'; state.hoverCode = null; document.querySelectorAll('#rank tbody tr.hl').forEach(tr => tr.classList.remove('hl')); }
-canvas.addEventListener('mousemove', (e) => {
-  if (globe.drag) return;
+function dotAt(e){
   const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   let best = null, bd = 14;
   for (const c of state.list){ if (!c._xy) continue; const d = Math.hypot(c._xy[0] - mx, c._xy[1] - my) - c._xy[2]; if (d < bd){ bd = d; best = c; } }
-  state.hoverCode = best ? best.code : null;
+  return best ? best.code : null;
+}
+canvas.addEventListener('click', (e) => { if (globe.mode === 'flat'){ const code = dotAt(e); if (code) toggleCountry(code); } });
+canvas.addEventListener('mousemove', (e) => {
+  if (globe.drag) return;
+  const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const code = dotAt(e); const best = code ? state.list.find(c => c.code === code) : null;
+  state.hoverCode = code;
   document.querySelectorAll('#rank tbody tr').forEach(tr => tr.classList.toggle('hl', tr.dataset.code === state.hoverCode));
   if (best){
     if (globe.mode === 'globe') globe.idleUntil = Math.max(globe.idleUntil, performance.now() + 1200); // 読んでいる間は止める
     const rank = state.list.indexOf(best) + 1;
-    tip.innerHTML = `<b>${flag(best.code)} ${nameOf(best.code, best.name)}</b><div class="v">#${rank} · シェア ${fmtPct(best.share)}%</div>`;
+    tip.innerHTML = `<b>${flag(best.code)} ${nameOf(best.code, best.name)}</b><div class="v">#${rank} · シェア ${fmtPct(best.share)}%</div><div class="v" style="font-size:11px">クリックで${state.filter.countries.has(best.code) ? '絞り込み解除' : '絞り込み'}</div>`;
     tip.style.display = 'block';
     const tw = tip.offsetWidth, th = tip.offsetHeight;
     tip.style.left = Math.min(W - tw - 6, Math.max(6, mx + 14)) + 'px';
@@ -1009,7 +1334,7 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseleave', hideTip);
 canvas.addEventListener('pointerdown', (e) => {
   if (globe.mode !== 'globe' || e.button > 0) return;
-  globe.drag = {x: e.clientX, y: e.clientY, lam: globe.lam, phi: globe.phi, id: e.pointerId};
+  globe.drag = {x: e.clientX, y: e.clientY, lam: globe.lam, phi: globe.phi, id: e.pointerId, code: dotAt(e)};
   globe.flyTo = null; canvas.classList.add('dragging'); hideTip();
   try { canvas.setPointerCapture(e.pointerId); } catch {}
 });
@@ -1019,7 +1344,7 @@ canvas.addEventListener('pointermove', (e) => {
   globe.lam = ((d.lam - (e.clientX - d.x) * k + 540) % 360) - 180;
   globe.phi = Math.max(-75, Math.min(75, d.phi + (e.clientY - d.y) * k));
 });
-const endDrag = (e) => { if (!globe.drag) return; globe.drag = null; canvas.classList.remove('dragging'); globe.idleUntil = performance.now() + 5000; if (globe.spin === 'sway') globe.t = Math.asin(Math.max(-1, Math.min(1, (JP_LL[0] - globe.lam) / 70))) / (globe.speed / 70); };
+const endDrag = (e) => { if (!globe.drag) return; const moved = Math.hypot(e.clientX - globe.drag.x, e.clientY - globe.drag.y) > 4; if (!moved && globe.drag.code) toggleCountry(globe.drag.code); globe.drag = null; canvas.classList.remove('dragging'); globe.idleUntil = performance.now() + 5000; if (globe.spin === 'sway') globe.t = Math.asin(Math.max(-1, Math.min(1, (JP_LL[0] - globe.lam) / 70))) / (globe.speed / 70); };
 canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMapMode(b.dataset.mode)));
 document.querySelectorAll('[data-spin]').forEach(b => b.addEventListener('click', () => setSpin(b.dataset.spin)));
@@ -1042,21 +1367,23 @@ function recordTrend(){
 function renderRanking(){
   const tbody = $('#rank tbody'); const snap = state.snapshot;
   const prevEntry = loadPrev()[trendKey()]; const prev = prevEntry && prevEntry.prev;
-  const max = state.list.length ? state.list[0].share : 1;
-  tbody.innerHTML = state.list.map((c, i) => {
+  const max = state.all.length ? state.all[0].share : 1, sel = state.filter.countries;
+  tbody.innerHTML = state.all.map((c, i) => {
     let trend = '<span class="trend">—</span>';
     if (prev && snap.kind !== 'demo'){
       const p = prev[c.code];
       if (p == null) trend = '<span class="trend up">NEW</span>';
       else { const d = c.share - p; const cls = d > .05 ? 'up' : d < -.05 ? 'down' : ''; trend = `<span class="trend ${cls}">${d > 0 ? '▲' : d < 0 ? '▼' : '±'}${Math.abs(d).toFixed(1)}</span>`; }
     }
-    return `<tr data-code="${c.code}"><td class="c">${i + 1}</td><td><span class="flag">${flag(c.code)}</span>${nameOf(c.code, c.name)}</td>
+    return `<tr data-code="${c.code}" class="${sel.size ? (sel.has(c.code) ? 'sel' : 'dim') : ''}"><td class="c">${i + 1}</td><td><span class="flag">${flag(c.code)}</span>${nameOf(c.code, c.name)}</td>
       <td class="barwrap"><div class="bar" style="width:${Math.max(2, c.share / max * 100)}%"></div></td>
       <td class="n">${fmtPct(c.share)}</td><td class="n">${trend}</td></tr>`;
   }).join('') || '<tr><td colspan="5" style="color:var(--muted)">データがありません</td></tr>';
-  tbody.querySelectorAll('tr').forEach(tr => {
+  tbody.querySelectorAll('tr[data-code]').forEach(tr => {
     tr.addEventListener('mouseenter', () => { state.hoverCode = tr.dataset.code; });
     tr.addEventListener('mouseleave', () => { if (state.hoverCode === tr.dataset.code) state.hoverCode = null; });
+    tr.addEventListener('click', () => toggleCountry(tr.dataset.code));
+    tr.title = state.filter.countries.has(tr.dataset.code) ? 'クリックで絞り込みを解除' : 'クリックでこの国に絞り込み';
   });
   const viewName = {all:'L7 と L3/4 の平均', l7:'L7 HTTP DDoS', l3:'L3/4 DDoS'}[state.view];
   const has = snap ? [snap.l7 && 'L7', snap.l3 && 'L3/4'].filter(Boolean).join('・') : '';
@@ -1148,16 +1475,17 @@ function drawSpark(hoverX){
   const vals = s.values.map(v => v == null ? 0 : v); const max = Math.max(...vals) || 1;
   const px = 6, py = 8, iw = w - px * 2, ih = h - py * 2;
   sparkPts = vals.map((v, i) => [px + i / (vals.length - 1) * iw, py + ih - v / max * ih]);
-  sctx.strokeStyle = '#243150'; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(px, py + ih); sctx.lineTo(px + iw, py + ih); sctx.stroke();
-  const grad = sctx.createLinearGradient(0, py, 0, py + ih); grad.addColorStop(0, 'rgba(57,135,229,.35)'); grad.addColorStop(1, 'rgba(57,135,229,0)');
+  if (hoverX == null && state.replay.on && sparkPts[state.replay.idx]) hoverX = sparkPts[state.replay.idx][0];
+  sctx.strokeStyle = T.line; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(px, py + ih); sctx.lineTo(px + iw, py + ih); sctx.stroke();
+  const grad = sctx.createLinearGradient(0, py, 0, py + ih); grad.addColorStop(0, `rgba(${T.l7RGB},.35)`); grad.addColorStop(1, `rgba(${T.l7RGB},0)`);
   sctx.beginPath(); sparkPts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.lineTo(px + iw, py + ih); sctx.lineTo(px, py + ih); sctx.closePath(); sctx.fillStyle = grad; sctx.fill();
-  sctx.beginPath(); sparkPts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.strokeStyle = '#3987e5'; sctx.lineWidth = 2; sctx.lineJoin = 'round'; sctx.stroke();
+  sctx.beginPath(); sparkPts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.strokeStyle = T.l7; sctx.lineWidth = 2; sctx.lineJoin = 'round'; sctx.stroke();
   const tipEl = $('#sparkTip');
   if (hoverX != null){
     let bi = 0; sparkPts.forEach((p, i) => { if (Math.abs(p[0] - hoverX) < Math.abs(sparkPts[bi][0] - hoverX)) bi = i; });
     const [x, y] = sparkPts[bi];
-    sctx.strokeStyle = '#6f7d99'; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(x, py); sctx.lineTo(x, py + ih); sctx.stroke();
-    sctx.beginPath(); sctx.arc(x, y, 4, 0, Math.PI * 2); sctx.fillStyle = '#3987e5'; sctx.fill(); sctx.strokeStyle = '#111a2c'; sctx.lineWidth = 2; sctx.stroke();
+    sctx.strokeStyle = T.muted; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(x, py); sctx.lineTo(x, py + ih); sctx.stroke();
+    sctx.beginPath(); sctx.arc(x, y, 4, 0, Math.PI * 2); sctx.fillStyle = T.l7; sctx.fill(); sctx.strokeStyle = T.surface; sctx.lineWidth = 2; sctx.stroke();
     const ts = s.timestamps[bi] ? fmtDateTime(new Date(s.timestamps[bi])) : `#${bi + 1}`;
     tipEl.textContent = `${ts}  ${(vals[bi] / max * 100).toFixed(0)}%（最大比）`; tipEl.style.display = 'block';
   } else tipEl.style.display = 'none';
@@ -1166,13 +1494,133 @@ spark.addEventListener('mousemove', (e) => { const r = spark.getBoundingClientRe
 spark.addEventListener('mouseleave', () => drawSpark());
 
 /* ════════════════════════════════════════════════════════════════════
+   タイムライン: 直近の期間を時間帯ごとに再生する
+   L7 時系列（15 分刻み）に沿って矢印の量を変え、履歴があれば国別内訳も切り替える
+   ════════════════════════════════════════════════════════════════════ */
+function seriesOf(){ const s = state.snapshot && state.snapshot.series; return s && Array.isArray(s.timestamps) && Array.isArray(s.values) && s.timestamps.length >= 2 ? s : null; }
+function replayTime(){ const s = seriesOf(); return s ? new Date(s.timestamps[Math.min(state.replay.idx, s.timestamps.length - 1)]) : new Date(); }
+function displayTime(){ return state.replay.on ? replayTime() : new Date(); }
+function replayRateScale(){
+  if (!state.replay.on) return 1;
+  const s = seriesOf(); if (!s) return 1;
+  const vals = s.values.map(v => v == null ? 0 : v), max = Math.max(...vals) || 1;
+  return Math.max(.12, Math.min(1.6, vals[state.replay.idx] / max * 1.3));
+}
+function stepMs(){ const s = seriesOf(); if (!s) return 500; const h = (Date.parse(s.timestamps[1]) - Date.parse(s.timestamps[0])) / 3600e3 || .25; return Math.max(60, 2000 * h / state.replay.speed); }
+function stepReplay(dt){
+  const r = state.replay; if (!r.on || !r.playing) return;
+  r.acc += dt;
+  const ms = stepMs(); let moved = false;
+  while (r.acc >= ms){ r.acc -= ms; if (r.idx < seriesOf().timestamps.length - 1){ r.idx++; moved = true; } else { r.playing = false; r.acc = 0; break; } }
+  if (moved) setReplayIdx(r.idx, false);
+  if (!r.playing) renderTimeline();
+}
+function setReplayIdx(i, fromUser){
+  const s = seriesOf(); if (!s) return;
+  const r = state.replay; r.idx = Math.max(0, Math.min(s.timestamps.length - 1, i));
+  if (!r.on){ r.on = true; canvas.parentElement.classList.add('replay'); $('#feed').innerHTML = ''; state.feed = []; }
+  if (fromUser) r.acc = 0;
+  const h = historyAt(replayTime());
+  if ((h && h.stamp) !== (r.snap && r.snap.snapStamp)){ r.snap = h ? Object.assign({snapStamp: h.stamp}, h) : null; rebuildList(); }
+  renderTimeline(); drawSpark();
+}
+function startReplay(){
+  const s = seriesOf(); if (!s) return;
+  const r = state.replay;
+  if (!r.on || r.idx >= s.timestamps.length - 1) setReplayIdx(0, true);
+  r.playing = true; r.acc = 0; state.paused = false; $('#pauseBtn').textContent = '⏸ 停止';
+  renderTimeline();
+}
+function pauseReplay(){ state.replay.playing = false; renderTimeline(); }
+function stopReplay(){
+  const r = state.replay; if (!r.on) return;
+  r.on = false; r.playing = false; r.idx = 0; r.snap = null; r.acc = 0;
+  canvas.parentElement.classList.remove('replay');
+  rebuildList(); renderTimeline(); drawSpark();
+}
+function renderTimeline(){
+  const s = seriesOf(), box = $('#timeline');
+  if (!s){ box.hidden = true; if (state.replay.on) stopReplay(); return; }
+  box.hidden = false;
+  const r = state.replay, n = s.timestamps.length, vals = s.values.map(v => v == null ? 0 : v), max = Math.max(...vals) || 1;
+  const bars = $('#tlBars');
+  if (bars.childElementCount !== n) bars.innerHTML = vals.map(() => '<i></i>').join('');
+  [...bars.children].forEach((el, i) => { el.style.height = Math.max(4, vals[i] / max * 100) + '%'; el.className = r.on ? (i === r.idx ? 'cur' : i < r.idx ? 'past' : '') : ''; });
+  const range = $('#tlRange'); range.max = n - 1; range.value = r.on ? r.idx : n - 1;
+  const fmtShort = (d) => d.toLocaleString('ja-JP', {hour12:false, timeZone:'Asia/Tokyo', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+  $('#tlTicks').innerHTML = [0, Math.floor((n - 1) / 2), n - 1].map(i => `<span>${fmtShort(new Date(s.timestamps[i]))}</span>`).join('');
+  const now = $('#tlNow');
+  if (r.on){
+    const pct = (vals[r.idx] / max * 100).toFixed(0);
+    now.textContent = `${fmtShort(replayTime())} JST · L7 攻撃量 ${pct}%（最大比）${r.snap ? ' · 国別: ' + fmtShort(new Date(r.snap.snapStamp)) + ' 時点' : ''}`; now.classList.add('rep');
+  } else { now.textContent = `${fmtShort(new Date(s.timestamps[0]))} 〜 ${fmtShort(new Date(s.timestamps[n - 1])) } JST`; now.classList.remove('rep'); }
+  $('#tlPlay').textContent = r.playing ? '⏸ 一時停止' : (r.on && r.idx >= n - 1 ? '↺ 最初から' : '▶ 再生');
+  $('#tlPlay').classList.toggle('on', r.playing);
+  $('#tlLive').hidden = !r.on;
+  const hist = loadHistory().filter(x => state.snapshot && x.key === (state.snapshot.provider || state.snapshot.label)).length;
+  $('#tlHint').textContent = (state.snapshot.kind === 'demo' ? 'デモ用の時系列（参考値）に合わせて矢印の量が変わります。' : `L7 攻撃量の時系列（${rangeLabel(state.snapshot.dateRange || '直近の期間')}）に合わせて矢印の量が変わります。`) +
+    (hist >= 2 ? `国別の内訳は、このブラウザで保存した ${hist} 件のスナップショットから時刻に近いものに切り替わります。` : '国別の内訳はページを開いたまま更新を重ねると、時刻ごとのスナップショットとして保存され、再生時に切り替わるようになります。');
+}
+$('#tlPlay').addEventListener('click', () => { if (state.replay.playing) pauseReplay(); else startReplay(); });
+$('#tlLive').addEventListener('click', stopReplay);
+$('#tlSpeed').addEventListener('change', () => { state.replay.speed = Number($('#tlSpeed').value) || 2; });
+$('#tlRange').addEventListener('input', () => { setReplayIdx(Number($('#tlRange').value), true); });
+$('#tlBars').addEventListener('click', (e) => { const rect = e.currentTarget.getBoundingClientRect(); const s = seriesOf(); if (!s) return; setReplayIdx(Math.round((e.clientX - rect.left) / rect.width * (s.timestamps.length - 1)), true); });
+
+/* ════════════════════════════════════════════════════════════════════
+   上位ランキングパネル（攻撃元 TOP5 / 攻撃先 TOP5）
+   ════════════════════════════════════════════════════════════════════ */
+function renderTop5(){
+  const snap = state.replay.on && state.replay.snap ? Object.assign({}, state.snapshot, state.replay.snap) : state.snapshot;
+  const cols = $('#top5Cols'), note = $('#top5Note');
+  document.querySelectorAll('#top5 [data-top]').forEach(b => b.classList.toggle('on', b.dataset.top === state.top));
+  if (!snap){ cols.innerHTML = ''; note.textContent = ''; return; }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const sel = state.filter.countries;
+  const col = (title, color, list, kind) => {
+    if (!list || !list.length) return `<div class="col"><h3><i style="background:${color}"></i>${title}</h3><div class="empty">データなし</div></div>`;
+    const top = list.slice(0, 5), max = top[0].share || top[0].count || 1;
+    return `<div class="col"><h3><i style="background:${color}"></i>${title}</h3>` + top.map((x, i) => {
+      const v = x.share != null && kind !== 'host' ? fmtPct(x.share) + '%' : (x.count || 0).toLocaleString('ja-JP');
+      const w = Math.max(2, ((kind === 'host' ? x.count : x.share) / max) * 100);
+      let nm;
+      if (kind === 'country') nm = `${flag(x.code)} ${esc(nameOf(x.code, x.name))}`;
+      else if (kind === 'host') nm = `<span style="font-family:var(--mono);font-size:12px">${esc(x.host)}</span>`;
+      else { const ja = industryJa(x.name); nm = ja ? `${esc(ja)}<span class="en">${esc(x.name)}</span>` : esc(x.name); }
+      const click = kind === 'country' ? ` click${sel.has(x.code) ? ' sel' : ''}" data-code="${x.code}" title="クリックで${sel.has(x.code) ? '絞り込みを解除' : 'この国に絞り込み'}` : '';
+      return `<div class="it${click}"><span class="r">${i + 1}</span><span class="nm">${nm}</span><span class="v">${v}</span><span class="bw"><b style="width:${w}%;background:${color}"></b></span></div>`;
+    }).join('') + '</div>';
+  };
+  const l7c = 'var(--l7)', l3c = 'var(--l3)', sc = 'var(--scan)';
+  if (state.top === 'src'){
+    if (snap.kind === 'demo') cols.innerHTML = col('送信元（参考値）', l7c, snap.l7, 'country');
+    else if (snap.l7 && snap.l3) cols.innerHTML = col('L7 HTTP DDoS の送信元', l7c, snap.l7, 'country') + col('L3/4 DDoS の送信元', l3c, snap.l3, 'country');
+    else cols.innerHTML = col(snap.l7 ? 'L7 HTTP DDoS の送信元' : 'L3/4 DDoS の送信元', snap.l7 ? l7c : l3c, snap.l7 || snap.l3, 'country');
+    note.textContent = snap.kind === 'demo' ? '参考値です。国をクリックすると地図とフィードをその国に絞り込めます。' : '日本を標的とする攻撃の送信元シェア。国をクリックすると地図とフィードをその国に絞り込めます。';
+    cols.querySelectorAll('.it.click').forEach(el => el.addEventListener('click', () => toggleCountry(el.dataset.code)));
+  } else {
+    const base = state.snapshot;
+    let html = '';
+    const ind = base.industries || base.industriesL3, ver = base.verticals || base.verticalsL3;
+    const isRef = base.kind === 'demo' || (!ind && !ver);
+    html += col('狙われている業種' + (isRef ? '（参考値）' : ''), l7c, ind || normNamed(DEMO_INDUSTRIES.map(([name, share]) => ({name, share}))), 'ind');
+    html += col('狙われている分野' + (isRef ? '（参考値）' : ''), sc, ver || normNamed(DEMO_VERTICALS.map(([name, share]) => ({name, share}))), 'ver');
+    if (base.targets && base.targets.length) html += col('標的ホスト（自分の管理ドメイン）', l3c, base.targets, 'host');
+    cols.innerHTML = html;
+    note.textContent = base.targets ? '業種・分野は Cloudflare Radar、ホストは自分の Cloudflare ゾーンの集計です。' : '攻撃先は日本国内の業種・分野のシェアです。個別の IP やドメインは公開データにありません。';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
    更新スケジューラ・イベント
    ════════════════════════════════════════════════════════════════════ */
 async function refresh(){
   $('#srcText').textContent = '取得中…';
   const snap = await loadSnapshot();
   state.snapshot = snap;
-  rebuildList(); recordTrend(); renderRanking(); renderStatus(); renderVictims();
+  recordHistory(snap);
+  if (state.replay.on) state.replay.snap = historyAt(replayTime());
+  rebuildList(); recordTrend(); renderRanking(); renderStatus(); renderVictims(); renderTimeline();
 }
 function schedule(){
   if (state.timer) clearInterval(state.timer);
@@ -1182,18 +1630,19 @@ document.querySelectorAll('.seg [data-view]').forEach(b => b.addEventListener('c
   document.querySelectorAll('.seg [data-view]').forEach(x => x.classList.toggle('on', x === b));
   state.view = b.dataset.view; rebuildList(); recordTrend(); renderRanking(); renderVictims();
 }));
+document.querySelectorAll('#top5 [data-top]').forEach(b => b.addEventListener('click', () => { state.top = b.dataset.top; renderTop5(); }));
 $('#pauseBtn').addEventListener('click', () => { state.paused = !state.paused; $('#pauseBtn').textContent = state.paused ? '▶ 再生' : '⏸ 停止'; });
 $('#sRate').addEventListener('input', () => { $('#sRateV').textContent = `現在 ${$('#sRate').value} 件/分`; settings.rate = Number($('#sRate').value); renderTiles(); });
 $('#saveBtn').addEventListener('click', async () => { settings = readForm(); saveSettings(settings); schedule(); await refresh(); });
 $('#reloadBtn').addEventListener('click', refresh);
-$('#clearBtn').addEventListener('click', () => { try { localStorage.removeItem(SETTINGS_KEY); localStorage.removeItem(TREND_KEY); } catch {} settings = {...DEFAULTS}; fillForm(); schedule(); refresh(); });
+$('#clearBtn').addEventListener('click', () => { try { localStorage.removeItem(SETTINGS_KEY); localStorage.removeItem(TREND_KEY); localStorage.removeItem(HISTORY_KEY); } catch {} settings = {...DEFAULTS}; fillForm(); applyTheme(); stopReplay(); schedule(); refresh(); });
 document.addEventListener('visibilitychange', () => { state.lastTick = 0; state.acc = 0; });
 let resizeTimer = null;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { resize(); drawSpark(); }, 120); });
-setInterval(() => { $('#clock').textContent = fmtTime(new Date()) + ' JST'; }, 500);
+setInterval(() => { const r = state.replay.on; $('#clock').textContent = (r ? fmtDateTime(displayTime()) + ' 再生中' : fmtTime(new Date()) + ' JST'); $('#clock').style.color = r ? 'var(--jp)' : ''; }, 500);
 
 (async function init(){
-  fillForm();
+  fillForm(); applyTheme();
   globe.mode = settings.mapMode === 'flat' ? 'flat' : 'globe';
   globe.spin = ['orbit', 'sway', 'off'].includes(settings.spin) ? settings.spin : 'orbit';
   document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === globe.mode));
