@@ -46,6 +46,26 @@ npx wrangler secret put ALLOWED_ORIGIN   # 例 https://<user>.github.io
 設定パネルの **Cloudflare API トークン** に入力すると、ブラウザの localStorage に保存して直接 API を呼びます。
 ブラウザの CORS 制限で失敗する場合は A または B を使ってください。トークンは他人と共有する端末では入力しないでください。
 
+## 異常検知アラート
+
+`attack-map feed` ワークフローはフィード取得のあとに `attack-map/scripts/detect-anomalies.mjs` を実行し、
+最新スナップショットを**直近 7 日のベースライン**（`latest.json` の過去コミット、git 履歴から復元）と比べて
+`attack-map/data/alerts.json` に結果を書き出します。実行ごとの Markdown 要約は Actions のジョブサマリーにも出ます。
+
+| 種別 | 判定（シェアは %） | 重要度 |
+|---|---|---|
+| `volume-surge` | L7 攻撃量の時系列で、直近 2 時間に 24 時間のピークがあり、普段（中央値）がピークの 40% 以下 | warn |
+| `l7-surge` | L7 送信元国のシェアが 5% 以上で、7 日平均の 2 倍・+5pt・+3σ をすべて超えた | warn |
+| `l3-new-dominant` | L3 送信元の首位が 50% 以上で、その国の 7 日平均が 10% 未満（新顔の大型 DDoS） | warn |
+| `industry-spike` | 被害業種（L7）のシェアが 25% 以上で、7 日平均 +10pt かつ +3σ を超えた | warn |
+| `feed` | 国別データが空（warn）/ 一部の API だけ失敗（info） | warn / info |
+| `l7-drop`, `l3-single-source` | 平均 10% 以上の国が半減・圏外、L3 首位が 90% 以上の集中 | info |
+
+- `alerts.json` の `status` は `ok` / `info` / `warn`。`alerts[].id` は「種別:対象:UTC 日付」で、同じ日の再検出は同じ ID になります。
+- ベースラインが 3 件未満のとき（導入直後など）は国別・業種の判定を保留し、`baseline.sufficient: false` を記録します。
+- しきい値はスクリプト冒頭の `RULES` にまとめてあります。ローカル実行: `node attack-map/scripts/detect-anomalies.mjs --out /tmp/alerts.json`
+- `warn` が出たときの通知は、このリポジトリとは別に、プロジェクト側の定期チェックが `alerts.json` を読んで行います（ワークフロー自体は失敗しません。`--fail-on-alert` を付けると warn でジョブを失敗させられます）。
+
 ## 攻撃を「受けている側」を見る
 
 被害を受けた**個別の IP アドレスやドメイン**は、被害者側が公表しないため公開データには存在しません。
