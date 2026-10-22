@@ -151,6 +151,28 @@ CLOUDFLARE_API_TOKEN=xxxx CLOUDFLARE_ZONE_IDS=zone1,zone2 \
 
 Radar の国別シェアが取れない場合でも、`targets.json` に送信元国の集計があればそれを地図とランキングに使います。
 
+## 週次・月次レポート（自動生成）
+
+`attack-map/data/latest.json` の git 履歴（全スナップショット）から、送信元国・業種のトレンドレポートを
+Markdown と HTML（前期間との比較グラフ付き、依存ライブラリなし）で生成します。
+
+- 出力先: `attack-map/reports/`（一覧: `attack-map/reports/index.html`。GitHub Pages なら `…/attack-map/reports/`）
+- 週次 `weekly-YYYY-MM-DD.{md,html}`: 最終日までの 7 日平均を前週と比較
+- 月次 `monthly-YYYY-MM.{md,html}`: 月平均を前月と比較し、週ごとの推移も載せる
+- ハイライト（自動検出）: 前期間比で 1.5 倍以上または 3pt 以上の増減、新顔・消失、期間内の単日突発（中央値の 3 倍以上）を
+  国・業種ごとに抽出。L3/4 は少数の大型攻撃で動くため、突発は 50% 以上を基準にする
+- `.github/workflows/attack-map-report.yml` が毎週月曜（週次）と毎月 1 日（月次）に実行してコミットします。**Actions** タブから手動実行もできます
+
+```sh
+node attack-map/scripts/trend-report.mjs --mode weekly  --end 2026-10-18   # 10/12〜10/18 の週次
+node attack-map/scripts/trend-report.mjs --mode monthly --month 2026-10    # 2026 年 10 月の月次
+node attack-map/scripts/trend-report.mjs --index                           # 一覧ページだけ再生成
+```
+
+集計の決め方: 各 UTC 日の最後のスナップショット（直近 24h 集計）をその日の値とし、期間平均を取ります。
+上位 20 件に入らなかった国・業種は 0% とみなします。ポート別の内訳は Radar の公開 API に無いため扱いません。
+履歴を別の場所に保存している場合は `--snapshots-dir DIR`（JSON ファイルのディレクトリ）で追加できます。
+
 ## カスタム JSON
 
 独自のハニーポットや SIEM の集計を表示したい場合は、次のどちらかの形式の JSON を HTTPS（CORS 許可）で公開し、
@@ -186,11 +208,15 @@ attack-map/
   data/history/           フィード履歴（index.json / YYYY-MM.jsonl / daily.csv）
   stats/index.html        統計ページ（履歴の閲覧。依存ライブラリなし）
   scripts/targets-from-cloudflare-zone.mjs 自分のゾーンへの攻撃をホスト名別に集計（任意）
+  scripts/trend-report.mjs 週次・月次レポート生成（Markdown + HTML）
+  scripts/names-ja.mjs    国コード・業種名の日本語表記（レポート用。index.html と同じ内容）
+  reports/                生成されたレポート（index.html が一覧）
   data/targets.json       上記の出力（CLOUDFLARE_ZONE_IDS 設定時のみ）
   worker/radar-proxy.js   Cloudflare Worker プロキシ
   worker/wrangler.toml
 tests/                    上記スクリプト・Worker のテスト（npm test）
 .github/workflows/attack-map-feed.yml
+.github/workflows/attack-map-report.yml 週次・月次レポート生成
 .github/workflows/ci.yml  Lint とテスト
 ```
 

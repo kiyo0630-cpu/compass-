@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>攻撃トレンドレポート一覧</title><style>
+:root{color-scheme:light;--bg:#fcfcfb;--surface:#ffffff;--text:#0b0b0b;--text2:#52514e;--muted:#8a8984;--line:#e6e5e1;--accent:#2a78d6;
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;--prev:#b9b8b2;--other:#d4d3cd;
+--up:#b42318;--up-bg:#fdecea;--down:#1c5cab;--down-bg:#e6f0fb;--spike:#8a5a00;--spike-bg:#fff4d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#141413;--surface:#1a1a19;--text:#f0efec;--text2:#c3c2b7;--muted:#8d8c85;--line:#2d2d2b;--accent:#3987e5;
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;--prev:#56554f;--other:#3a3a37;
+--up:#ff8a80;--up-bg:#3a1a17;--down:#86b6ef;--down-bg:#16294a;--spike:#f2c15c;--spike-bg:#3a2d10}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#141413;--surface:#1a1a19;--text:#f0efec;--text2:#c3c2b7;--muted:#8d8c85;--line:#2d2d2b;--accent:#3987e5;
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;--prev:#56554f;--other:#3a3a37;
+--up:#ff8a80;--up-bg:#3a1a17;--down:#86b6ef;--down-bg:#16294a;--spike:#f2c15c;--spike-bg:#3a2d10}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:800px;margin:0 auto;padding:24px 16px 64px}a{color:var(--accent)}
+h1{font-size:1.5rem;margin:.2em 0 .3em}h2{font-size:1.1rem;margin:0 0 .3em}.crumb{font-size:.85rem;color:var(--text2);margin:0}
+.sub{color:var(--text2);margin:.1em 0 .6em;font-size:.92rem}.meta{color:var(--muted);font-size:.82rem;margin:0}
+section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0}
+.chart{display:block;max-width:100%;height:auto}.chart text{font-family:inherit}.chart .tick{font-size:11px;fill:var(--muted)}.chart .label{font-size:12px;fill:var(--text)}.chart .value{font-size:11px;fill:var(--text2)}
+.chart .grid{stroke:var(--line);stroke-width:1}.chart .leader{stroke:var(--muted);stroke-width:1;opacity:.6}.chart .boundary{stroke:var(--muted);stroke-width:1;stroke-dasharray:none}
+.chart .bar{fill:var(--s1)}.chart .bar.prev{fill:var(--prev)}.chart .bar.other{fill:var(--other)}.chart .hit{cursor:default}.chart .hit:hover{opacity:.8}
+.chart path.line{fill:none !important;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.chart .dot{stroke:var(--surface);stroke-width:2}
+.chart .paired .bar{rx:0}.chart.paired rect.s1{fill:var(--s1)}
+.chart .s1{fill:var(--s1);stroke:var(--s1)}.chart .dot.s1{stroke:var(--surface)}.chart .line.s1{stroke:var(--s1)}.sw.s1{background:var(--s1)}.chart .s2{fill:var(--s2);stroke:var(--s2)}.chart .dot.s2{stroke:var(--surface)}.chart .line.s2{stroke:var(--s2)}.sw.s2{background:var(--s2)}.chart .s3{fill:var(--s3);stroke:var(--s3)}.chart .dot.s3{stroke:var(--surface)}.chart .line.s3{stroke:var(--s3)}.sw.s3{background:var(--s3)}.chart .s4{fill:var(--s4);stroke:var(--s4)}.chart .dot.s4{stroke:var(--surface)}.chart .line.s4{stroke:var(--s4)}.sw.s4{background:var(--s4)}.chart .s5{fill:var(--s5);stroke:var(--s5)}.chart .dot.s5{stroke:var(--surface)}.chart .line.s5{stroke:var(--s5)}.sw.s5{background:var(--s5)}.chart .s6{fill:var(--s6);stroke:var(--s6)}.chart .dot.s6{stroke:var(--surface)}.chart .line.s6{stroke:var(--s6)}.sw.s6{background:var(--s6)}.chart .s7{fill:var(--s7);stroke:var(--s7)}.chart .dot.s7{stroke:var(--surface)}.chart .line.s7{stroke:var(--s7)}.sw.s7{background:var(--s7)}.chart .s8{fill:var(--s8);stroke:var(--s8)}.chart .dot.s8{stroke:var(--surface)}.chart .line.s8{stroke:var(--s8)}.sw.s8{background:var(--s8)}
+.sw.prev{background:var(--prev)}.sw.other{background:var(--other)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--text2);margin:4px 0 8px}.legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.muted{color:var(--muted)}.note{font-size:.9rem;color:var(--text2);margin:.6em 0 0}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin-top:8px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}th{color:var(--text2);font-weight:600}td:nth-child(n+3){font-variant-numeric:tabular-nums}
+details{margin-top:8px}summary{cursor:pointer;color:var(--accent);font-size:.9rem}
+.hl{list-style:none;margin:0;padding:0;display:grid;gap:8px}.hl li{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;border:1px solid var(--line)}
+.hl .badge{flex:none;font-size:.78rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.hl.up,.hl li.up .badge{color:var(--up);background:var(--up-bg)}.hl li.down .badge{color:var(--down);background:var(--down-bg)}.hl li.spike .badge{color:var(--spike);background:var(--spike-bg)}
+.hl li.high{border-color:transparent;background:color-mix(in srgb,var(--surface) 70%,var(--line))}
+.d.up{color:var(--up)}.d.down{color:var(--down)}
+.tip{position:fixed;z-index:9;pointer-events:none;background:var(--text);color:var(--bg);font-size:.8rem;padding:4px 8px;border-radius:6px;max-width:260px}
+.notes ul{margin:0;padding-left:1.2em;font-size:.9rem;color:var(--text2)}
+.list{list-style:none;padding:0;margin:0}.list li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+</style></head>
+<body><main><header><p class="crumb"><a href="../">攻撃マップ</a></p><h1>攻撃トレンドレポート</h1><p class="sub">日本を標的とする攻撃の送信元国・業種の週次・月次まとめ（Cloudflare Radar のスナップショットから自動生成）</p></header>
+<section><h2>月次まとめ</h2><ul class="list"><li><a href="./monthly-2026-10.html">月次 攻撃トレンドまとめ（2026 年 10 月）</a><span class="muted"><a href="./monthly-2026-10.md">md</a></span></li></ul></section><section><h2>週次レポート</h2><ul class="list"><li><a href="./weekly-2026-10-18.html">週次 攻撃トレンド要約（10/12 〜 10/18）</a><span class="muted"><a href="./weekly-2026-10-18.md">md</a></span></li></ul></section>
+</main></body></html>

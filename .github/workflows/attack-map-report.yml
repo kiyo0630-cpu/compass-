@@ -1,0 +1,69 @@
+name: attack-map report
+
+# attack-map/data/latest.json の git 履歴から週次・月次の攻撃トレンドレポート（Markdown + HTML）を生成し、
+# attack-map/reports/ にコミットする。GitHub Pages では https://<user>.github.io/<repo>/attack-map/reports/ で閲覧できる。
+#   - 毎週月曜 01:30 UTC: 前日（日曜）までの 7 日間の週次レポート
+#   - 毎月 1 日 01:30 UTC: 前月の月次まとめ
+on:
+  schedule:
+    - cron: '30 1 * * 1'   # 週次（月曜）
+    - cron: '30 1 1 * *'   # 月次（1 日）
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'weekly / monthly / both'
+        default: 'both'
+        required: false
+      end:
+        description: '週次の最終日 (YYYY-MM-DD、省略時はデータのある直近の日)'
+        required: false
+      month:
+        description: '月次の対象月 (YYYY-MM、省略時は直近のデータの月)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: attack-map-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # スナップショットの全履歴が必要
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate reports
+        env:
+          MODE: ${{ github.event.inputs.mode || '' }}
+          END: ${{ github.event.inputs.end || '' }}
+          MONTH: ${{ github.event.inputs.month || '' }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          set -e
+          if [ -n "$MODE" ]; then mode="$MODE";
+          elif [ "$SCHEDULE" = "30 1 1 * *" ]; then mode=monthly;
+          else mode=weekly; fi
+          if [ "$mode" = weekly ] || [ "$mode" = both ]; then
+            node attack-map/scripts/trend-report.mjs --mode weekly ${END:+--end "$END"}
+          fi
+          if [ "$mode" = monthly ] || [ "$mode" = both ]; then
+            node attack-map/scripts/trend-report.mjs --mode monthly ${MONTH:+--month "$MONTH"}
+          fi
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add attack-map/reports
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "attack-map: trend report $(date -u +%Y-%m-%d) [skip ci]"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push
+          fi
