@@ -198,7 +198,6 @@ function resolvePeriods(days, today) {
 
 // ---------- SVG チャート ----------
 // 配色は dataviz リファレンスパレット（CVD 検証済みの並び）。CSS 変数で light/dark を切り替える。
-const SERIES = 8;
 const svgOpen = (w, h, cls = '') => `<svg class="chart ${cls}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" xmlns="http://www.w3.org/2000/svg">`;
 
 // 今期間と前期間の横棒（ペア）。current: slot 1、previous: 無彩色
