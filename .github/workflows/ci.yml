@@ -10,6 +10,7 @@ on:
     paths-ignore:
       - 'attack-map/data/**'   # フィードの自動コミットでは走らせない
       - 'reports/**'
+      - 'nikkei225-momentum/data/**'   # 株価 CSV の自動コミットでは走らせない
   pull_request:
   workflow_dispatch:
 
@@ -35,15 +36,15 @@ jobs:
       - run: npm test
 
   python:
-    name: Lint (keiba)
+    name: Lint (keiba, nikkei225-momentum)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/ruff-action@v3
         with:
-          args: check keiba
+          args: check keiba nikkei225-momentum
       - name: Syntax check
-        run: python3 -m py_compile keiba/*.py
+        run: python3 -m py_compile keiba/*.py nikkei225-momentum/*.py
 
   e-card:
     name: Lint & build (e-card-src)
