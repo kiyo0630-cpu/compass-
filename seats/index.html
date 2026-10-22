@@ -46,6 +46,11 @@ td.auto{background:var(--auto)}
 td.auto select,td.empty select{border:0;background:transparent;width:100%;text-align:center}
 td.empty{background:var(--leave)}
 td.fixed{font-weight:500}
+td.spec{font-weight:500;background:#e4efe6}
+.warn{color:var(--red);cursor:help}
+.bulk{display:flex;gap:4px;margin-top:4px}
+.bulk input[type=text]{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--rule);border-radius:6px}
+.specs span{background:#e4efe6}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:8px}
 .legend i{display:inline-block;width:14px;height:14px;border:1px solid var(--rule);vertical-align:-2px;margin-right:4px}
 .members{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
@@ -87,11 +92,12 @@ td.fixed{font-weight:500}
     <tbody id="body"></tbody>
   </table></div>
   <div class="legend">
-    <span><i style="background:#fff"></i>固定</span>
+    <span><i style="background:#fff"></i>固定曜日</span>
+    <span><i style="background:#e4efe6"></i>指定出社日</span>
     <span><i style="background:var(--auto)"></i>自動(ペア優先 → 出社率の低い順)</span>
     <span><i style="background:var(--leave)"></i>空席(候補なし)</span>
     <span><i style="background:var(--hol)"></i>土日祝</span>
-    <span>自動席はプルダウンで手動変更できます(日付ごとに保存)</span>
+    <span>自動席はプルダウンで手動変更できます(日付ごとに保存)。⚠ は固定が3人を超えた日(後ろの人を自動扱い)</span>
   </div>
 </div>
 
@@ -108,7 +114,7 @@ td.fixed{font-weight:500}
 <div class="card">
   <h2>固定の曜日</h2>
   <div class="tablewrap"><table style="min-width:420px" id="fixedGrid"></table></div>
-  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。尾上・片山、関口・須田はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。</p>
+  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山、関口・須田はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。</p>
 </div>
 
 <div class="card">
@@ -141,12 +147,32 @@ const MEMBERS = [
 ];
 const WDN={1:'月',2:'火',3:'水',4:'木',5:'金'};
 const memberById=id=>MEMBERS.find(m=>m.id===id);
-// その曜日の席順(1〜5番目)。null は自動割り当て席
-function seatsFor(wd){
-  const ids=MEMBERS.filter(m=>m.daily).map(m=>m.id);
-  MEMBERS.filter(m=>!m.daily&&(state.fixed[m.id]||[]).includes(wd)).slice(0,3).forEach(m=>ids.push(m.id));
-  while(ids.length<5) ids.push(null);
-  return ids;
+// その日の席順(1〜5番目)。null は自動割り当て席
+// 優先: 指定出社日 > 固定曜日(メンバー順) > 自動。指定日がある月はその人の固定曜日を使わない。
+// 固定が定員(3人)を超えた日は、後ろの人から外す。外す人にペアの相手がいれば一緒に外す。
+function seatsForDate(d){
+  const key=ymd(d), wd=d.getDay(), mon=key.slice(0,7);
+  const onLeave=id=>state.leaves[id].includes(key);
+  const seats=MEMBERS.filter(m=>m.daily).map(m=>({id:m.id, kind:'daily'}));
+  const others=MEMBERS.filter(m=>!m.daily&&!onLeave(m.id));
+  const spec=others.filter(m=>state.specified[m.id].includes(key)).map(m=>({id:m.id, kind:'spec'}));
+  const hasSpecMonth=m=>state.specified[m.id].some(x=>x.startsWith(mon));
+  let weekly=others.filter(m=>!hasSpecMonth(m)&&(state.fixed[m.id]||[]).includes(wd));
+  const bumped=[];
+  const inPair=m=>m.pair&&weekly.some(x=>x.id===m.pair);
+  const remove=i=>{ const m=weekly.splice(i,1)[0]; bumped.push(m.id); const pi=weekly.findIndex(x=>x.id===m.pair); if(pi>=0){ bumped.push(weekly[pi].id); weekly.splice(pi,1); } };
+  while(spec.length+weekly.length>3){
+    const over=spec.length+weekly.length-3;
+    let pi=-1; for(let i=weekly.length-1;i>=0;i--){ if(inPair(weekly[i])){ pi=i; break; } }
+    let si=-1; for(let i=weekly.length-1;i>=0;i--){ if(!inPair(weekly[i])){ si=i; break; } }
+    if(over>=2&&pi>=0) remove(pi);        // 2人以上あふれる: ペアをまとめて外す
+    else if(si>=0) remove(si);            // 1人あふれる: 後ろの単独の人を外す
+    else remove(pi);                      // 単独の人がいなければペアを外す
+  }
+  spec.forEach(x=>seats.push(x)); weekly.forEach(m=>seats.push({id:m.id, kind:'fixed'}));
+  while(seats.length<5) seats.push({id:null, kind:'auto'});
+  seats.bumped=bumped;
+  return seats;
 }
 
 // ---------- 保存 ----------
@@ -156,6 +182,20 @@ let state = {rates:{}, leaves:{}, overrides:{}, base:{}};
 try{ const s=localStorage.getItem(KEY); if(s) state=Object.assign(state, JSON.parse(s)); }catch(e){}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 MEMBERS.forEach(m=>{ if(state.rates[m.id]==null) state.rates[m.id]=100; if(!state.leaves[m.id]) state.leaves[m.id]=[]; });
+// 初期データ: 10月実績+11月見込みの合計(%)を2か月(営業日40日)で割った値を12月の起点にする
+const PRESET={version:1, base:{month:'2026-12',days:40},
+  rates:{nishikawa:100, shimao:95.45, onoe:49.05, katayama:49.05, sekiguchi:58.15, suda:34.7, baba:33.95, kadono:33.95, hirota:33.95},
+  specified:{
+    onoe:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
+    katayama:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
+  }};
+if(!state.specified) state.specified={};
+MEMBERS.forEach(m=>{ if(!state.specified[m.id]) state.specified[m.id]=[]; });
+if(state.presetVersion!==PRESET.version){
+  state.base=Object.assign({},PRESET.base); Object.assign(state.rates,PRESET.rates);
+  Object.keys(PRESET.specified).forEach(id=>{ state.specified[id]=PRESET.specified[id].slice(); });
+  state.presetVersion=PRESET.version; save();
+}
 const FIXED_VERSION=2; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
 if(!state.fixed||state.fixedVersion!==FIXED_VERSION){ state.fixed={}; state.fixedVersion=FIXED_VERSION; }
 MEMBERS.forEach(m=>{ if(!m.daily&&!state.fixed[m.id]) state.fixed[m.id]=(m.fixed||[]).slice(); });
@@ -208,9 +248,11 @@ function baseStart(){ return new Date(state.base.month+'-01T00:00:00'); }
 function assignDay(d, rateOf){
   const wd=d.getDay(), key=ymd(d);
   const onLeave=id=>state.leaves[id].includes(key);
-  const seats=seatsFor(wd).map(id=>({id, fixed:true}));
+  const base=seatsForDate(d);
+  const seats=base.map(x=>({id:x.id, kind:x.kind, fixed:!!x.id}));
+  seats.bumped=base.bumped;
   const used=new Set();
-  seats.forEach(s=>{ if(s.id&&onLeave(s.id)){ s.id=null; s.fixed=false; } else if(!s.id){ s.fixed=false; } if(s.id) used.add(s.id); });
+  seats.forEach(s=>{ if(s.id&&onLeave(s.id)){ s.id=null; s.fixed=false; s.kind='auto'; } if(s.id) used.add(s.id); });
   const ov=state.overrides[key]||{};
   seats.forEach((s,i)=>{ if(s.fixed) return; const o=ov[i]; if(o&&!used.has(o)&&!onLeave(o)){ s.id=o; s.manual=true; used.add(o);} });
   // 自動席: ペアの相手がその日すでに座っていれば最優先、次に出社率の低い順
@@ -258,6 +300,7 @@ function monthPlan(y,m){
 let cur=new Date(); cur=new Date(cur.getFullYear(),cur.getMonth(),1);
 const WD='日月火水木金土';
 const nameOf=id=>MEMBERS.find(m=>m.id===id)?.name||'';
+const curMonthKey=()=>cur.getFullYear()+'-'+pad(cur.getMonth()+1);
 function render(){
   const y=cur.getFullYear(), m=cur.getMonth();
   document.getElementById('title').textContent=`${y}年${m+1}月`;
@@ -270,8 +313,10 @@ function render(){
     let html=`<td class="date">${m+1}/${d.getDate()}</td><td>${WD[wd]}</td>`;
     if(wd===0||wd===6||hol){ tr.classList.add('off'); html+=`<td class="note" colspan="5">${hol||'休み'}</td>`; }
     else{
-      plan.days[key].forEach((s,i)=>{
-        if(s.fixed){ html+=`<td class="fixed">${nameOf(s.id)}</td>`; return; }
+      const day=plan.days[key];
+      if(day.bumped.length){ html=`<td class="date" title="固定が3人を超えたため自動扱い: ${day.bumped.map(nameOf).join('・')}">${m+1}/${d.getDate()} <span class="warn">⚠</span></td><td>${WD[wd]}</td>`; }
+      day.forEach((s,i)=>{
+        if(s.fixed){ html+=`<td class="${s.kind==='spec'?'spec':'fixed'}">${nameOf(s.id)}</td>`; return; }
         const onLeave=id=>state.leaves[id].includes(key);
         const autoLabel=s.manual?'(自動に戻す)':(s.id?nameOf(s.id)+' (自動)':'(空席)');
         const opts=[`<option value="" ${s.manual?'':'selected'}>${autoLabel}</option>`].concat(MEMBERS.filter(x=>!onLeave(x.id)).map(x=>`<option value="${x.id}" ${s.manual&&s.id===x.id?'selected':''}>${x.name}</option>`)).join('');
@@ -322,20 +367,41 @@ function renderMembers(){
   MEMBERS.forEach(m=>{
     const div=document.createElement('div'); div.className='member';
     const leaves=state.leaves[m.id].slice().sort();
+    const specs=state.specified[m.id].slice().sort();
     const label=m.daily?'毎日':((state.fixed[m.id]||[]).map(w=>WDN[w]).join('・')||'固定なし')+(m.pair?'(ペア: '+memberById(m.pair).name+')':'');
     div.innerHTML=`<div class="name"><span>${m.name}</span><span class="rule">${label}</span></div>
-      <div class="rate">基準月時点の出社率 <input type="number" min="0" max="100" step="1" value="${state.rates[m.id]}" data-id="${m.id}"> %</div>
+      <div class="rate">基準月時点の出社率 <input type="number" min="0" max="100" step="0.1" value="${state.rates[m.id]}" data-id="${m.id}"> %</div>
       <div>休暇 <input type="date" data-leave="${m.id}"></div>
-      <div class="leaves">${leaves.map(l=>`<span>${l.slice(5).replace('-','/')}<b data-rm="${m.id}" data-date="${l}">×</b></span>`).join('')}</div>`;
+      <div class="leaves">${leaves.map(l=>`<span>${l.slice(5).replace('-','/')}<b data-rm="${m.id}" data-date="${l}">×</b></span>`).join('')}</div>
+      ${m.daily?'':`<div class="bulk">指定出社日 <input type="text" data-spec="${m.id}" placeholder="例: 12/1 3 7 9 (年は表示月)"><button class="btn" data-specadd="${m.id}">追加</button></div>
+      <div class="leaves specs">${specs.map(l=>`<span title="${l}">${Number(l.slice(5,7))}/${Number(l.slice(8))}<b data-rmspec="${m.id}" data-date="${l}">×</b></span>`).join('')}</div>`}`;
     box.appendChild(div);
   });
   box.querySelectorAll('input[type=number]').forEach(i=>i.addEventListener('change',e=>{
-    let v=Number(e.target.value); if(isNaN(v)) v=100; v=Math.max(0,Math.min(100,v)); e.target.value=v;
+    let v=Number(e.target.value); if(isNaN(v)) v=100; v=Math.round(Math.max(0,Math.min(100,v))*100)/100; e.target.value=v;
     state.rates[e.target.dataset.id]=v; save(); render();
   }));
   box.querySelectorAll('input[type=date]').forEach(i=>i.addEventListener('change',e=>{
     const id=e.target.dataset.leave, v=e.target.value; if(!v) return;
     if(!state.leaves[id].includes(v)) state.leaves[id].push(v);
+    save(); renderMembers(); render();
+  }));
+  // 指定出社日: "12/1 3 7" や "2026-12-01" をまとめて追加。月を省略すると直前の月、年は表示月の年
+  box.querySelectorAll('button[data-specadd]').forEach(b=>b.addEventListener('click',e=>{
+    const id=e.target.dataset.specadd, inp=box.querySelector(`input[data-spec="${id}"]`);
+    let y=cur.getFullYear(), mo=cur.getMonth()+1; const added=[];
+    inp.value.split(/[\s,、]+/).filter(Boolean).forEach(tok=>{
+      let mt;
+      if((mt=tok.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))){ y=+mt[1]; mo=+mt[2]; added.push([y,mo,+mt[3]]); }
+      else if((mt=tok.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/))){ y=+mt[1]; mo=+mt[2]; added.push([y,mo,+mt[3]]); }
+      else if((mt=tok.match(/^(\d{1,2})\/(\d{1,2})$/))){ mo=+mt[1]; added.push([y,mo,+mt[2]]); }
+      else if((mt=tok.match(/^(\d{1,2})$/))){ added.push([y,mo,+mt[1]]); }
+    });
+    added.forEach(([yy,mm,dd])=>{ const t=new Date(yy,mm-1,dd); if(t.getMonth()!==mm-1) return; const k=ymd(t); if(!state.specified[id].includes(k)) state.specified[id].push(k); });
+    save(); renderMembers(); render();
+  }));
+  box.querySelectorAll('b[data-rmspec]').forEach(b=>b.addEventListener('click',e=>{
+    const {rmspec,date}=e.target.dataset; state.specified[rmspec]=state.specified[rmspec].filter(x=>x!==date);
     save(); renderMembers(); render();
   }));
   box.querySelectorAll('b[data-rm]').forEach(b=>b.addEventListener('click',e=>{
@@ -350,7 +416,7 @@ bd.addEventListener('change',()=>{ let v=Math.round(Number(bd.value)); if(!(v>=1
 document.getElementById('prev').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);render();};
 document.getElementById('next').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);render();};
 document.getElementById('today').onclick=()=>{const t=new Date();cur=new Date(t.getFullYear(),t.getMonth(),1);render();};
-document.getElementById('reset').onclick=()=>{ if(!confirm('出社率・休暇・手動指定をすべて消します。よろしいですか?')) return; state={rates:{},leaves:{},overrides:{},fixed:{},fixedVersion:FIXED_VERSION,base:{month:thisMonth(),days:20}}; MEMBERS.forEach(m=>{state.rates[m.id]=100;state.leaves[m.id]=[];if(!m.daily)state.fixed[m.id]=(m.fixed||[]).slice();}); bm.value=state.base.month; bd.value=state.base.days; save(); renderFixed(); renderMembers(); render(); };
+document.getElementById('reset').onclick=()=>{ if(!confirm('出社率・休暇・手動指定をすべて消します。よろしいですか?')) return; state={rates:{},leaves:{},overrides:{},fixed:{},specified:{},fixedVersion:FIXED_VERSION,presetVersion:PRESET.version,base:{month:thisMonth(),days:20}}; MEMBERS.forEach(m=>{state.rates[m.id]=100;state.leaves[m.id]=[];state.specified[m.id]=[];if(!m.daily)state.fixed[m.id]=(m.fixed||[]).slice();}); bm.value=state.base.month; bd.value=state.base.days; save(); renderFixed(); renderMembers(); render(); };
 renderFixed(); renderMembers(); render();
 </script>
 </body>
