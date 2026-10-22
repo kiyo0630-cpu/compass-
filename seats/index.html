@@ -114,7 +114,7 @@ td.spec{font-weight:500;background:#e4efe6}
 <div class="card">
   <h2>固定の曜日</h2>
   <div class="tablewrap"><table style="min-width:420px" id="fixedGrid"></table></div>
-  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山、関口・須田はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。関口は水曜固定で、尾上・片山と重なる水曜は須田抜きで入ります。それ以外の日は関口・須田は尾上・片山がいない日を優先します。</p>
+  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。関口は水曜固定です。</p>
 </div>
 
 <div class="card">
@@ -132,7 +132,7 @@ td.spec{font-weight:500;background:#e4efe6}
   </p>
   <p class="help" style="margin-bottom:10px">各メンバーの出社率は「基準月の初日時点で、基準日数分の実績から出した値」として入力します。基準月以降は、この表の割り当て(休暇を除く)を出社として積み上げ、出社率を更新しながら空席を埋めます。</p>
   <div class="members" id="members"></div>
-  <p class="help">自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。関口・須田は尾上・片山が座っている日を後回しにします。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
+  <p class="help">自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
   <p style="margin-top:8px"><button class="btn danger" id="reset">保存データをすべて消す</button></p>
 </div>
 
@@ -146,8 +146,8 @@ const MEMBERS = [
   {id:'shimao',    name:'島尾', daily:true},
   {id:'onoe',      name:'尾上', fixed:[1,2], pair:'katayama'},
   {id:'katayama',  name:'片山', fixed:[1,2], pair:'onoe'},
-  {id:'sekiguchi', name:'関口', fixed:[3], pair:'suda', avoid:['onoe','katayama']},
-  {id:'suda',      name:'須田', fixed:[], pair:'sekiguchi', avoid:['onoe','katayama']},
+  {id:'sekiguchi', name:'関口', fixed:[3]},
+  {id:'suda',      name:'須田', fixed:[]},
   {id:'baba',      name:'馬場', fixed:[1]},
   {id:'kadono',    name:'門野', fixed:[2]},
   {id:'hirota',    name:'廣田', fixed:[5]},
