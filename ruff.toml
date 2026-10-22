@@ -1,0 +1,15 @@
+# keiba/ の Python スクリプト用。既存コードのスタイル（1 行に複数文など）は変えず、
+# バグになりやすいものだけを検出する。
+target-version = "py311"
+line-length = 160
+
+[lint]
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = [
+  "E701", "E702",  # 既存コードは `if x: return` や `a = 1; b = 2` を多用している
+  "E731",          # lambda 代入
+  "E741",          # 短い変数名（l など）
+  "E401",          # `import sys, os` のような 1 行 import
+  "B023",          # ループ内 lambda は即時実行しているので誤検知
+  "B905",          # zip(strict=) は Python 3.10+ 限定
+]

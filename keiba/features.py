@@ -13,7 +13,7 @@
 - Elo 型レーティング: 日付順に逐次更新。レース前の値だけを特徴量にする。
 出力: data/features.csv
 """
-import glob, os, sys, time
+import glob, os, time
 import numpy as np
 import pandas as pd
 
@@ -60,7 +60,7 @@ def alternating_fe(y, groups: dict, xcont: dict, n_iter=40, tol=1e-4):
     beta = {k: 0.0 for k in xcont}
     xc = {k: v - v.mean() for k, v in xcont.items()}
     prev = y.copy()
-    for it in range(n_iter):
+    for it in range(n_iter):  # noqa: B007 (ループ後に it を返す)
         for k in groups:
             partial = y - sum(beta[x] * xc[x] for x in xc) - sum(v for kk, v in eff.items() if kk != k)
             eff[k] = pd.Series(partial).groupby(groups[k]).transform('mean').values
@@ -123,7 +123,7 @@ def elo_ratings(df, k_new=40.0, k_old=20.0, n_switch=6, scale=400.0, margin_col=
     rating = np.full(len(horses), 1500.0); games = np.zeros(len(horses), dtype=int)
     pre = np.empty(len(d)); pre_games = np.empty(len(d), dtype=int)
     # レースをブロックで処理
-    codes, starts = pd.factorize(d['race_key'].values)[0], None
+    codes = pd.factorize(d['race_key'].values)[0]
     order = np.argsort(codes, kind='stable')  # d は日付順なのでレース順も日付順
     bounds = np.r_[0, np.flatnonzero(np.diff(codes[order])) + 1, len(order)]
     fin = d['確定着順'].values; mg = d[margin_col].values

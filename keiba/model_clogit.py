@@ -9,7 +9,7 @@ v2: 条件付きロジット（単勝）と 3 着内モデルのウォークフ�
 係数は Hessian 由来の標準誤差つきで出力し、年をまたいだ安定性を見る。
 依存: numpy, pandas
 """
-import os, sys
+import os
 import numpy as np
 import pandas as pd
 
@@ -77,7 +77,7 @@ def softmax_by_race(s, codes, nR):
 
 def fit_clogit(X, y, codes, nR, l2=1e-3, iters=40):
     n, k = X.shape; w = np.zeros(k)
-    for it in range(iters):
+    for _ in range(iters):
         p = softmax_by_race(X @ w, codes, nR)
         grad = X.T @ (y - p) - l2 * w
         Xp = X * p[:, None]; H = Xp.T @ X
@@ -118,7 +118,7 @@ def harville_place3(p, codes, nR, lam=1.0):
 
 def fit_logit(X, y, l2=1e-3, iters=40):
     n, k = X.shape; w = np.zeros(k)
-    for it in range(iters):
+    for _ in range(iters):
         z = X @ w; p = 1 / (1 + np.exp(-z))
         grad = X.T @ (y - p) - l2 * w
         H = (X * (p * (1 - p))[:, None]).T @ X + l2 * np.eye(k)
