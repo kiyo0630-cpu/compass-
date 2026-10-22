@@ -48,6 +48,7 @@ async function gql(variables) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query: QUERY, variables }),
+    signal: AbortSignal.timeout(30_000),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || (body.errors && body.errors.length)) {
