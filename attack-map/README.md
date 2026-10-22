@@ -5,6 +5,7 @@
 ビルド不要で、GitHub Pages にそのまま置けます。
 
 - ページ: `attack-map/index.html`（公開 URL の例: `https://<user>.github.io/<repo>/attack-map/`）
+- 統計ページ: `attack-map/stats/index.html`（`…/attack-map/stats/`）。GitHub Actions が蓄積した履歴から、国別シェアの推移・期間ランキング・任意の時刻のランキングを見られます
 - 地図・ランキング・ライブフィード・スパークライン（L7 攻撃量の推移）・設定パネルを含みます
 - 地図は既定で**ゆっくり回る地球儀**（正射図法）。ドラッグで回せ、「一周 / 日本中心に往復 / 固定」と「🎯 日本」ボタン、平面地図への切り替えがあります。外部ライブラリは使っていません
 
@@ -45,6 +46,64 @@ npx wrangler secret put ALLOWED_ORIGIN   # 例 https://<user>.github.io
 
 設定パネルの **Cloudflare API トークン** に入力すると、ブラウザの localStorage に保存して直接 API を呼びます。
 ブラウザの CORS 制限で失敗する場合は A または B を使ってください。トークンは他人と共有する端末では入力しないでください。
+
+## フィード履歴
+
+`attack-map feed` ワークフローは `latest.json` を取得するたびに、`attack-map/scripts/history.mjs append` で
+`attack-map/data/history/` に 1 回分を 1 行として追記します（同じ `generatedAt` は二重に保存しません）。
+統計ページ（`attack-map/stats/`）はこのフォルダだけを読みます。他のスクリプト（異常検知や週次レポート）からもそのまま使えます。
+
+```
+attack-map/data/history/
+  index.json      月ファイルの一覧と件数・期間（統計ページが最初に読む）
+  YYYY-MM.jsonl   月ごとの生データ。1 行 = 1 回の取得（JSON Lines、UTC 時刻順）
+  daily.csv       日本時間の日別 × 種別 × 国の集計（表計算ソフト向け。jsonl から自動生成）
+```
+
+### `YYYY-MM.jsonl` の 1 行（schema 1）
+
+```json
+{"t":"2026-10-22T10:12:37Z","target":"JP","range":"1d",
+ "l7":[["US",23.881],["NL",7.414],["SG",5.996]],
+ "l3":[["BR",37.603],["US",13.601]],
+ "industries":[["Computer Software",26.177],["Retail",9.067]],
+ "verticals":[["Computer and Electronics",27.07]],
+ "industriesL3":[["Gambling & Gaming",43.5]],
+ "verticalsL3":[["Gambling",43.6]],
+ "updated":{"l7":"2026-10-22T08:30:00Z","l3":"2026-10-22T08:15:00Z"},
+ "errors":0,
+ "l7PeakAt":"2026-10-21T19:15:00Z"}
+```
+
+| キー | 内容 |
+|---|---|
+| `t` | 取得時刻（UTC、ISO 8601）。行の一意キー |
+| `target` / `range` | 標的の国コードと集計窓（`1d` = 直近 24 時間）。隣り合う行の窓は重なる |
+| `l7` / `l3` | 送信元 国別シェア（%）を `[国コード, シェア]` の配列で上位順。小数 3 桁。取得できなかった場合は `null` |
+| `industries` / `verticals` | 攻撃を受けた側の業種・分野（L7、`[英語名, シェア%]`）。`…L3` は L3/4 の同じもの |
+| `updated` | Cloudflare Radar 側のデータ最終更新時刻（L7 / L3） |
+| `errors` | 取得時に失敗した API 呼び出しの数（0 なら全項目そろっている） |
+| `l7PeakAt` | 窓内で L7 攻撃量（相対値）が最大だった時刻。時系列そのものは保存しない |
+
+ランキングは Radar の上位 20 か国までなので、圏外の国はその行に現れません（集計では 0% とみなします）。
+
+### `daily.csv`
+
+```
+date,layer,code,share_avg,share_min,share_max,snapshots
+2026-10-22,l7,US,23.512,22.901,24.102,6
+```
+
+`date` は日本時間の日付、`layer` は `l7` / `l3`、`share_avg` はその日の全取得回数で割った平均（圏外の回は 0%）、
+`snapshots` はその国がランキングに入っていた回数です。
+
+### コマンド
+
+```sh
+node attack-map/scripts/history.mjs append     # latest.json を履歴に追記（Actions が毎時実行）
+node attack-map/scripts/history.mjs backfill   # git 履歴にある過去の latest.json を全部取り込む（復旧用）
+node attack-map/scripts/history.mjs rebuild    # index.json と daily.csv を jsonl から作り直す
+```
 
 ## 攻撃を「受けている側」を見る
 
@@ -103,6 +162,9 @@ attack-map/
   data/countries-110m.json 地図の輪郭（world-atlas）。Actions が初回に保存。無ければ CDN から取得
   scripts/radar-lib.mjs   Cloudflare Radar 取得・整形の共通ロジック
   scripts/fetch-radar.mjs Actions / ローカル実行用 CLI
+  scripts/history.mjs     フィード履歴の追記・復旧・再生成
+  data/history/           フィード履歴（index.json / YYYY-MM.jsonl / daily.csv）
+  stats/index.html        統計ページ（履歴の閲覧。依存ライブラリなし）
   scripts/targets-from-cloudflare-zone.mjs 自分のゾーンへの攻撃をホスト名別に集計（任意）
   data/targets.json       上記の出力（CLOUDFLARE_ZONE_IDS 設定時のみ）
   worker/radar-proxy.js   Cloudflare Worker プロキシ

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1322">
+<title>攻撃マップ 統計 — 過去データ</title>
+<meta name="description" content="日本を標的とするサイバー攻撃の送信元国シェアを、GitHub Actions が蓄積した履歴から日別・時刻別に振り返る統計ページ。">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0c1322; --surface:#111a2c; --surface-2:#172238; --line:#243150;
+  --text:#e8ecf5; --text-2:#aab4c9; --muted:#6f7d99;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --other:#55627f; --up:#f0a5a5; --down:#9fe3bf; --jp:#f5d27a;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;padding:14px 16px 32px}
+button,select,input{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+a{color:#7fb2f0}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 2px 12px}
+header h1{font-size:21px;font-weight:700;letter-spacing:.04em;line-height:1.3}
+header h1 .accent{color:var(--jp)}
+header .sub{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.statusbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:11.5px;letter-spacing:.06em;white-space:nowrap;background:var(--surface);color:var(--text-2);text-decoration:none}
+.chip.err{border-color:#8a3a3a;color:#ffb3b3}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+h2{font-size:13px;letter-spacing:.12em;font-weight:600;color:var(--text-2);display:flex;align-items:baseline;gap:8px;padding:12px 14px 0;flex-wrap:wrap}
+h2 small{font-weight:400;letter-spacing:0;color:var(--muted);font-size:11px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0f172a}
+.seg button{padding:5px 11px;font-size:12px;background:none;border:none;color:var(--text-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--surface-2);color:var(--text);font-weight:600}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 14px}
+.controls .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:-4px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:0 14px 12px}
+.tile{background:var(--surface-2);border-radius:9px;padding:9px 11px;min-width:0}
+.tile .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.25;margin-top:2px}
+.tile .v small{font-family:var(--sans);font-size:11px;color:var(--text-2);font-weight:400;margin-left:3px}
+.tile .s{font-size:11px;color:var(--text-2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start;margin-top:14px}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0}
+.chips button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#0f172a;border-radius:999px;padding:3px 10px 3px 7px;font-size:12px;color:var(--text-2)}
+.chips button i{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--muted)}
+.chips button.on{color:var(--text);border-color:#3a4a70;background:var(--surface-2)}
+.chips button:not(.on) i{opacity:.35}
+.chartwrap{position:relative;padding:6px 10px 10px}
+svg.chart{display:block;width:100%;height:auto;font-family:var(--mono);font-size:11px}
+svg.chart .grid{stroke:#1b2640;stroke-width:1}
+svg.chart .axis{fill:var(--muted)}
+svg.chart .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+svg.chart .ln.dim{opacity:.25}
+svg.chart .lab{font-family:var(--sans);font-size:11px;fill:var(--text-2)}
+svg.chart .cross{stroke:#3a4a70;stroke-width:1;display:none}
+svg.chart .pt{fill:var(--bg);stroke-width:2}
+.tip{position:absolute;pointer-events:none;display:none;background:#0b1120ee;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);white-space:nowrap;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.tip .t{font-family:var(--mono);color:var(--muted);margin-bottom:2px}
+.tip .r{display:flex;align-items:center;gap:6px}
+.tip .r i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.tip .r .v{font-family:var(--mono);margin-left:auto;padding-left:10px;color:var(--text-2)}
+.legend{display:flex;gap:10px 14px;flex-wrap:wrap;padding:4px 14px 10px;font-size:11.5px;color:var(--text-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+table.rank{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+table.rank th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:4px 14px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.rank th.n,table.rank td.n{text-align:right;font-family:var(--mono)}
+table.rank td{padding:5px 14px;border-bottom:1px solid #1b2640;vertical-align:middle;white-space:nowrap}
+table.rank tr:last-child td{border-bottom:none}
+table.rank tr:hover td{background:var(--surface-2)}
+table.rank td.c{width:1%;color:var(--muted);font-family:var(--mono);font-size:12px}
+table.rank .flag{font-size:16px;margin-right:6px;vertical-align:-1px}
+table.rank .sw{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:1px}
+table.rank .bar{height:6px;border-radius:3px;background:var(--s1);min-width:2px}
+table.rank .barwrap{width:100%;min-width:60px}
+.trend{font-size:11px;color:var(--muted);min-width:3.4em;display:inline-block;text-align:right}
+.trend.up{color:var(--up)}.trend.down{color:var(--down)}
+canvas.sp{width:70px;height:18px;display:block}
+.scroll{overflow:auto;max-height:520px}
+.snapnav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 14px 0}
+.snapnav select{background:#0b1120;border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:13px;color:var(--text);max-width:100%}
+.snapnav input[type=range]{width:100%;margin-top:8px;accent-color:var(--s1)}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:6px 12px;font-size:13px}
+.btn:disabled{opacity:.4;cursor:default}
+.bars{padding:6px 14px 12px;font-size:12.5px}
+.bars .row{display:grid;grid-template-columns:minmax(0,1fr) 110px 52px;gap:8px;align-items:center;padding:3px 0}
+.bars .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bars .nm .en{color:var(--muted);font-size:10.5px;margin-left:4px}
+.bars .bw{height:6px;background:#0b1120;border-radius:3px;overflow:hidden}
+.bars .bw i{display:block;height:100%;background:var(--s1);border-radius:3px}
+.bars .bw i.l3{background:var(--s2)}
+.bars .v{font-family:var(--mono);text-align:right;color:var(--text-2)}
+.note{padding:0 14px 12px;font-size:11.5px;color:var(--muted);line-height:1.6}
+.note code{font-family:var(--mono);font-size:11px;background:#0b1120;padding:1px 5px;border-radius:4px}
+details.tbl{padding:0 14px 12px}
+details.tbl summary{cursor:pointer;font-size:12px;color:var(--text-2)}
+.msg{padding:14px;color:var(--text-2);font-size:13px}
+.msg.err{color:#ffb3b3}
+footer{margin-top:14px;padding:14px;font-size:12px;color:var(--text-2);line-height:1.7}
+footer h3{font-size:12.5px;color:var(--text);margin-bottom:4px;letter-spacing:.06em}
+footer ul{padding-left:1.3em}
+footer code{font-family:var(--mono);font-size:11px;background:#0b1120;padding:1px 5px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>攻撃マップ <span class="accent">統計</span><span style="font-weight:400;color:var(--text-2);font-size:15px;margin-left:10px">過去データを振り返る</span></h1>
+    <div class="sub">Attack map · History &amp; statistics · Target: Japan</div>
+  </div>
+  <div class="statusbar">
+    <a class="chip" href="../">🌐 ライブマップへ戻る</a>
+    <span id="rangeChip" class="chip">読み込み中…</span>
+  </div>
+</header>
+
+<section class="card">
+  <div class="controls">
+    <span class="lbl">種別</span>
+    <div class="seg" id="layerSeg" role="group" aria-label="攻撃種別">
+      <button data-layer="l7" class="on">L7 (HTTP DDoS)</button>
+      <button data-layer="l3">L3/4 DDoS</button>
+    </div>
+    <span class="lbl">期間</span>
+    <div class="seg" id="periodSeg" role="group" aria-label="集計期間">
+      <button data-days="7" class="on">7 日</button>
+      <button data-days="30">30 日</button>
+      <button data-days="90">90 日</button>
+      <button data-days="0">全期間</button>
+    </div>
+    <span class="lbl">粒度</span>
+    <div class="seg" id="grainSeg" role="group" aria-label="時間の粒度">
+      <button data-grain="snap" class="on">取得ごと</button>
+      <button data-grain="day">日別平均</button>
+    </div>
+  </div>
+  <div class="tiles" id="tiles"></div>
+</section>
+
+<div id="loadMsg" class="card msg" style="margin-top:14px">履歴データを読み込み中…</div>
+
+<main id="main" hidden>
+  <div class="col">
+    <section class="card">
+      <h2>送信元 国別シェアの推移 <small id="lineSub"></small></h2>
+      <div class="chips" id="chips"></div>
+      <div class="chartwrap">
+        <svg class="chart" id="line" role="img" aria-label="国別シェアの時系列"></svg>
+        <div class="tip" id="lineTip"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <details class="tbl"><summary>表で見る（日本時間・日別平均 %）</summary><div class="scroll" id="lineTable"></div></details>
+    </section>
+
+    <section class="card">
+      <h2>期間内の国別ランキング <small id="rankSub"></small></h2>
+      <div class="scroll">
+        <table class="rank" id="rank">
+          <thead><tr><th>#</th><th>国・地域</th><th>平均シェア</th><th class="n">平均 %</th><th class="n">最大 %</th><th class="n">変化</th><th>推移</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note">平均はランキング圏外（Cloudflare Radar の上位 20 か国に入らなかった回）を 0% として計算。「変化」は期間の後半の平均 − 前半の平均（ポイント）。</div>
+    </section>
+  </div>
+
+  <aside class="col">
+    <section class="card">
+      <h2>時刻を選んで見る <small>その時点のランキング</small></h2>
+      <div class="snapnav">
+        <button class="btn" id="prevSnap" title="1 つ前">◀</button>
+        <select id="snapSel"></select>
+        <button class="btn" id="nextSnap" title="1 つ後">▶</button>
+        <input type="range" id="snapRange" min="0" max="0" value="0" aria-label="時刻スライダー">
+      </div>
+      <table class="rank" id="snapRank">
+        <thead><tr><th>#</th><th>国・地域</th><th class="n">%</th><th class="n">前回比</th><th class="n">24h 前比</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="note" id="snapNote"></div>
+    </section>
+
+    <section class="card">
+      <h2>攻撃を受けている側 <small id="indSub">期間平均・業種</small></h2>
+      <div class="bars" id="industries"></div>
+    </section>
+
+    <section class="card">
+      <h2>データのダウンロード</h2>
+      <div class="note" id="downloads" style="padding-top:8px"></div>
+    </section>
+  </aside>
+</main>
+
+<footer class="card">
+  <h3>このページの読み方</h3>
+  <ul>
+    <li><b>データの出どころ:</b> GitHub Actions が Cloudflare Radar から取得したスナップショット（<code>attack-map/data/latest.json</code>）を、取得のたびに <code>attack-map/data/history/YYYY-MM.jsonl</code> に 1 行ずつ追記したものです。各行は「直近 24 時間」の集計値なので、隣り合う時刻の値は窓が重なり、なめらかに変わります。</li>
+    <li><b>シェアの意味:</b> 日本を標的とする攻撃のうち、その国の IP から来た割合（%）です。国は送信元 IP の地理情報で、ボットネットや踏み台を含みます。</li>
+    <li><b>色:</b> 国ごとに固定で、フィルタを変えても同じ国は同じ色です。上位 8 か国以外は灰色です。</li>
+    <li><b>時刻:</b> すべて日本時間（JST）で表示しています。</li>
+  </ul>
+</footer>
+</div>
+
+<script>
+'use strict';
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtPct = (v) => v >= 10 ? v.toFixed(1) : v.toFixed(2);
+const HIST = '../data/history/';
+const SLOTS = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+const OTHER = '#55627f';
+
+/* ISO 3166-1 alpha-2 → 日本語名（地図ページと同じ表の短縮版） */
+const NAMES = {JP:'日本',US:'アメリカ',CN:'中国',RU:'ロシア',NL:'オランダ',BG:'ブルガリア',GB:'イギリス',DE:'ドイツ',FR:'フランス',IN:'インド',BR:'ブラジル',TW:'台湾',HK:'香港',KR:'韓国',VN:'ベトナム',IR:'イラン',ID:'インドネシア',SG:'シンガポール',UA:'ウクライナ',TR:'トルコ',PL:'ポーランド',RO:'ルーマニア',IT:'イタリア',ES:'スペイン',SE:'スウェーデン',FI:'フィンランド',LT:'リトアニア',LV:'ラトビア',MD:'モルドバ',SC:'セーシェル',PA:'パナマ',CA:'カナダ',MX:'メキシコ',AR:'アルゼンチン',CO:'コロンビア',CL:'チリ',TH:'タイ',MY:'マレーシア',PH:'フィリピン',BD:'バングラデシュ',PK:'パキスタン',KP:'北朝鮮',MN:'モンゴル',KZ:'カザフスタン',AU:'オーストラリア',NZ:'ニュージーランド',ZA:'南アフリカ',NG:'ナイジェリア',EG:'エジプト',KE:'ケニア',MA:'モロッコ',DZ:'アルジェリア',SA:'サウジアラビア',AE:'アラブ首長国連邦',IL:'イスラエル',IQ:'イラク',CH:'スイス',AT:'オーストリア',BE:'ベルギー',CZ:'チェコ',HU:'ハンガリー',GR:'ギリシャ',PT:'ポルトガル',IE:'アイルランド',NO:'ノルウェー',DK:'デンマーク',EE:'エストニア',BY:'ベラルーシ',RS:'セルビア',HR:'クロアチア',GE:'ジョージア',AM:'アルメニア',AZ:'アゼルバイジャン',UZ:'ウズベキスタン',LK:'スリランカ',NP:'ネパール',MM:'ミャンマー',KH:'カンボジア',LA:'ラオス',PE:'ペルー',VE:'ベネズエラ',EC:'エクアドル',BO:'ボリビア',PY:'パラグアイ',UY:'ウルグアイ',CR:'コスタリカ',DO:'ドミニカ共和国',CU:'キューバ',PR:'プエルトリコ',GT:'グアテマラ',LU:'ルクセンブルク',CY:'キプロス',MT:'マルタ',IS:'アイスランド',TN:'チュニジア',GH:'ガーナ',ET:'エチオピア',TZ:'タンザニア',AO:'アンゴラ',CM:'カメルーン',SN:'セネガル',CI:'コートジボワール',MZ:'モザンビーク',ZW:'ジンバブエ',SK:'スロバキア',SI:'スロベニア',BA:'ボスニア・ヘルツェゴビナ',AL:'アルバニア',MK:'北マケドニア',KG:'キルギス',TJ:'タジキスタン',TM:'トルクメニスタン',AF:'アフガニスタン',OM:'オマーン',KW:'クウェート',QA:'カタール',JO:'ヨルダン',LB:'レバノン',SY:'シリア',YE:'イエメン',LY:'リビア',SD:'スーダン',UG:'ウガンダ',ZM:'ザンビア',MU:'モーリシャス',MG:'マダガスカル',NA:'ナミビア',BW:'ボツワナ',HN:'ホンジュラス',SV:'エルサルバドル',NI:'ニカラグア',JM:'ジャマイカ',TT:'トリニダード・トバゴ',BZ:'ベリーズ',PG:'パプアニューギニア',FJ:'フィジー',MO:'マカオ',BN:'ブルネイ',MV:'モルディブ',BT:'ブータン',GL:'グリーンランド',VG:'英領バージン諸島',KY:'ケイマン諸島',BS:'バハマ',GI:'ジブラルタル',IM:'マン島',JE:'ジャージー',GG:'ガーンジー',LI:'リヒテンシュタイン',ME:'モンテネグロ',XK:'コソボ',EU:'欧州（国不明）',AP:'アジア太平洋（国不明）',T1:'Tor 出口ノード',XX:'不明'};
+const INDUSTRY_JA = {'gaming':'ゲーム','gambling':'ギャンブル','gambling & gaming':'ギャンブル・ゲーム','internet':'インターネット','internet & telecom':'インターネット・通信','internet and telecom':'インターネット・通信','telecommunications':'通信','finance':'金融','financial services':'金融サービス','banking':'銀行','insurance':'保険','cryptocurrency':'暗号資産','government':'政府','government & public sector':'政府・公共','public sector':'公共','military':'軍事','education':'教育','higher education':'高等教育','retail':'小売','e-commerce':'EC','retail & e-commerce':'小売・EC','media':'メディア','entertainment':'エンターテインメント','media & entertainment':'メディア・エンタメ','news':'ニュース','software':'ソフトウェア','computer software':'ソフトウェア','information technology and services':'IT・サービス','information technology & services':'IT・サービス','it services':'IT サービス','hosting':'ホスティング','web hosting':'ホスティング','cloud':'クラウド','healthcare':'医療','health & medicine':'医療・健康','pharmaceuticals':'製薬','transportation':'運輸','travel & tourism':'旅行・観光','airlines':'航空','logistics':'物流','manufacturing':'製造','automotive':'自動車','energy':'エネルギー','utilities':'公益事業','business services':'ビジネスサービス','marketing & advertising':'マーケティング・広告','advertising':'広告','consulting':'コンサルティング','legal':'法務','real estate':'不動産','nonprofit':'非営利','non-profit':'非営利','religion':'宗教','sports':'スポーツ','food & beverage':'食品・飲料','agriculture':'農業','construction':'建設','consumer services':'消費者サービス','consumer electronics':'家電','electronics':'電子機器','adult':'アダルト','dating':'出会い系','social media':'SNS','social networks':'SNS','search engines':'検索エンジン','cybersecurity':'セキュリティ','computer & network security':'セキュリティ','other':'その他','unknown':'不明','computer and electronics':'コンピュータ・電子機器','computers & electronics':'コンピュータ・電子機器','shopping & general merchandise':'ショッピング・小売','shopping':'ショッピング','professional services':'専門サービス','news, media, and publications':'ニュース・メディア','games':'ゲーム','video games':'ゲーム','research':'研究','online media':'オンラインメディア','computer hardware':'ハードウェア','computer networking':'ネットワーク','arts & entertainment':'芸術・エンタメ','reference':'辞書・参考情報','science':'科学','jobs & education':'求人・教育','autos & vehicles':'自動車','home & garden':'住まい','beauty & fitness':'美容・健康','people & society':'社会','law & government':'法律・政府','books & literature':'書籍','pets & animals':'ペット・動物','food & drink':'食品・飲料','hobbies & leisure':'趣味・レジャー','online communities':'オンラインコミュニティ','real estate & construction':'不動産・建設'};
+function industryJa(name){
+  const k = String(name || '').trim().toLowerCase();
+  if (INDUSTRY_JA[k]) return INDUSTRY_JA[k];
+  const rules = [[/gam(bl|e)/,'ゲーム・ギャンブル'],[/financ|bank|insur|fintech/,'金融'],[/crypto/,'暗号資産'],[/telecom/,'通信'],[/internet|isp/,'インターネット'],[/government|public/,'政府・公共'],[/educat|school|universit/,'教育'],[/retail|commerce|shopping/,'小売・EC'],[/media|entertain|news|broadcast/,'メディア・エンタメ'],[/software|it |information technology|saas|technolog/,'IT・ソフトウェア'],[/health|medic|pharma|hospital/,'医療'],[/travel|tour|airline|hotel/,'旅行・観光'],[/transport|logist/,'運輸・物流'],[/manufactur|industr|automotive/,'製造'],[/energy|utilit|oil|gas/,'エネルギー'],[/host|cloud|data ?center/,'ホスティング・クラウド'],[/computer|electronic|hardware|network/,'コンピュータ・電子機器']];
+  for (const [re, ja] of rules) if (re.test(k)) return ja;
+  return null;
+}
+const nameOf = (c) => NAMES[c] || c;
+const flag = (c) => /^[A-Z]{2}$/.test(c) && !['EU','AP','T1','XX'].includes(c) ? String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65)) : '🏴';
+
+/* ── 日本時間の整形 ─────────────────────── */
+const JST = 9 * 3600 * 1000;
+const jst = (iso) => new Date(new Date(iso).getTime() + JST);
+const jstDate = (iso) => jst(iso).toISOString().slice(0, 10);
+const fmtDT = (iso) => { const d = jst(iso); return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+const fmtDTfull = (iso) => { const d = jst(iso); return `${d.getUTCFullYear()}/${d.getUTCMonth() + 1}/${d.getUTCDate()}（${'日月火水木金土'[d.getUTCDay()]}） ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+const fmtD = (iso) => { const d = jst(iso); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+
+/* ── 状態 ──────────────────────────────── */
+const state = { rows: [], layer: 'l7', days: 7, grain: 'snap', hidden: new Set(), colorOf: new Map(), snapIdx: -1 };
+
+/* ── 読み込み ───────────────────────────── */
+async function load(){
+  const idx = await (await fetch(`${HIST}index.json?t=${Date.now()}`, {cache:'no-store'})).json();
+  const rows = [];
+  for (const m of idx.months || []) {
+    const r = await fetch(`${HIST}${m.file}?t=${Date.now()}`, {cache:'no-store'});
+    if (!r.ok) continue;
+    for (const line of (await r.text()).split('\n')) { if (line.trim()) { try { rows.push(JSON.parse(line)); } catch {} } }
+  }
+  rows.sort((a, b) => a.t.localeCompare(b.t));
+  state.rows = rows;
+  state.index = idx;
+  assignColors();
+  $('#downloads').innerHTML = `<div>月別の生データ（JSONL・1 行 = 1 回の取得）:</div>` +
+    (idx.months || []).map((m) => `<div>・<a href="${HIST}${m.file}" download>${m.file}</a> <span style="color:var(--muted)">${m.count} 件</span></div>`).join('') +
+    `<div style="margin-top:6px">日別集計（CSV・表計算ソフト向け）: <a href="${HIST}daily.csv" download>daily.csv</a></div>` +
+    `<div style="margin-top:6px">形式の説明: <a href="https://github.com/kiyo0630-cpu/compass-/blob/main/attack-map/README.md#フィード履歴" target="_blank" rel="noopener">README</a></div>`;
+}
+/* 国ごとの色を全期間の平均シェア順で固定する（フィルタを変えても色は変わらない） */
+function assignColors(){
+  for (const layer of ['l7', 'l3']) {
+    const sum = new Map();
+    for (const r of state.rows) for (const [c, s] of r[layer] || []) sum.set(c, (sum.get(c) || 0) + s);
+    const order = [...sum.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+    const map = new Map();
+    order.forEach((c, i) => map.set(c, i < SLOTS.length ? SLOTS[i] : OTHER));
+    state.colorOf.set(layer, map);
+  }
+}
+const colorOf = (c) => state.colorOf.get(state.layer)?.get(c) || OTHER;
+
+/* ── 期間内データ ───────────────────────── */
+function periodRows(){
+  if (!state.days) return state.rows;
+  const last = state.rows[state.rows.length - 1];
+  if (!last) return [];
+  const from = new Date(last.t).getTime() - state.days * 86400000;
+  return state.rows.filter((r) => new Date(r.t).getTime() >= from);
+}
+function shareOf(row, code){ for (const [c, s] of row[state.layer] || []) if (c === code) return s; return 0; }
+/* 日別平均（JST） */
+function dailyRows(rows){
+  const by = new Map();
+  for (const r of rows) { const d = jstDate(r.t); if (!by.has(d)) by.set(d, []); by.get(d).push(r); }
+  return [...by.entries()].map(([d, list]) => {
+    const sum = new Map();
+    for (const r of list) for (const [c, s] of r[state.layer] || []) sum.set(c, (sum.get(c) || 0) + s);
+    return { t: new Date(new Date(d + 'T00:00:00Z').getTime() - JST + 12 * 3600000).toISOString(), day: d, n: list.length, [state.layer]: [...sum.entries()].map(([c, s]) => [c, s / list.length]).sort((a, b) => b[1] - a[1]) };
+  });
+}
+function stats(rows){
+  const n = rows.length;
+  const sum = new Map(), max = new Map(), half = Math.floor(n / 2);
+  const sumA = new Map(), sumB = new Map();
+  rows.forEach((r, i) => {
+    for (const [c, s] of r[state.layer] || []) {
+      sum.set(c, (sum.get(c) || 0) + s); max.set(c, Math.max(max.get(c) || 0, s));
+      (i < half ? sumA : sumB).set(c, ((i < half ? sumA : sumB).get(c) || 0) + s);
+    }
+  });
+  const nA = half || 1, nB = (n - half) || 1;
+  return [...sum.keys()].map((c) => ({ code: c, avg: sum.get(c) / n, max: max.get(c), delta: (sumB.get(c) || 0) / nB - (sumA.get(c) || 0) / nA }))
+    .sort((a, b) => b.avg - a.avg);
+}
+
+/* ── 描画: タイル ───────────────────────── */
+function renderTiles(rows, st){
+  const first = rows[0], last = rows[rows.length - 1];
+  const riser = st.filter((x) => x.avg >= 0.5).sort((a, b) => b.delta - a.delta)[0];
+  const faller = st.filter((x) => x.avg >= 0.5).sort((a, b) => a.delta - b.delta)[0];
+  const tile = (k, v, s) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  $('#tiles').innerHTML =
+    tile('取得回数', `${rows.length}<small>回</small>`, first ? `${fmtD(first.t)} 〜 ${fmtD(last.t)}（JST）` : '—') +
+    tile('期間の 1 位', st[0] ? `${fmtPct(st[0].avg)}<small>%</small>` : '—', st[0] ? `${flag(st[0].code)} ${esc(nameOf(st[0].code))}（平均）` : '—') +
+    tile('上位 3 か国 合計', st[0] ? `${fmtPct(st.slice(0, 3).reduce((a, x) => a + x.avg, 0))}<small>%</small>` : '—', st.slice(0, 3).map((x) => flag(x.code)).join(' ')) +
+    tile('増えた国', riser && riser.delta > 0 ? `<span style="color:var(--up)">▲${riser.delta.toFixed(1)}</span><small>pt</small>` : '—', riser ? `${flag(riser.code)} ${esc(nameOf(riser.code))}（後半 − 前半）` : '—') +
+    tile('減った国', faller && faller.delta < 0 ? `<span style="color:var(--down)">▼${Math.abs(faller.delta).toFixed(1)}</span><small>pt</small>` : '—', faller ? `${flag(faller.code)} ${esc(nameOf(faller.code))}（後半 − 前半）` : '—');
+}
+
+/* ── 描画: チップ・凡例 ─────────────────── */
+function renderChips(st){
+  const top = st.slice(0, 8);
+  $('#chips').innerHTML = top.map((x) => `<button data-code="${x.code}" class="${state.hidden.has(x.code) ? '' : 'on'}"><i style="background:${colorOf(x.code)}"></i>${flag(x.code)} ${esc(nameOf(x.code))}</button>`).join('');
+  $('#chips').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    const c = b.dataset.code; if (state.hidden.has(c)) state.hidden.delete(c); else state.hidden.add(c); render();
+  }));
+  const shown = top.filter((x) => !state.hidden.has(x.code));
+  $('#legend').innerHTML = shown.map((x) => `<span><i style="background:${colorOf(x.code)}"></i>${esc(nameOf(x.code))}</span>`).join('');
+  return shown.map((x) => x.code);
+}
+
+/* ── 描画: 折れ線 ───────────────────────── */
+function renderLine(rows, codes){
+  const svg = $('#line');
+  const W = Math.max(480, Math.round(svg.parentElement.clientWidth - 20) || 920), H = W < 600 ? 260 : 300, padL = 44, padR = W < 600 ? 80 : 110, padT = 14, padB = 30;
+  const pts = state.grain === 'day' ? dailyRows(rows) : rows;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (pts.length < 2 || !codes.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" class="lab">表示できるデータがありません</text>`; return; }
+  const t0 = new Date(pts[0].t).getTime(), t1 = new Date(pts[pts.length - 1].t).getTime();
+  const x = (t) => padL + (t - t0) / Math.max(1, t1 - t0) * (W - padL - padR);
+  let ymax = 0;
+  for (const p of pts) for (const c of codes) ymax = Math.max(ymax, shareOf(p, c));
+  ymax = Math.max(5, Math.ceil(ymax / 5) * 5);
+  const y = (v) => padT + (1 - v / ymax) * (H - padT - padB);
+  let out = '';
+  const steps = ymax <= 20 ? 5 : ymax <= 50 ? 10 : 20;
+  for (let v = 0; v <= ymax; v += steps) out += `<line class="grid" x1="${padL}" x2="${W - padR}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`;
+  // X 軸: 期間に応じて日付ラベル
+  const spanDays = (t1 - t0) / 86400000;
+  const every = spanDays <= 2 ? 6 * 3600000 : spanDays <= 10 ? 86400000 : spanDays <= 40 ? 86400000 * 5 : 86400000 * 15;
+  const start = Math.ceil((t0 - JST) / every) * every + JST;
+  for (let t = start; t <= t1; t += every) {
+    const d = new Date(t);
+    const lab = every < 86400000 ? fmtDT(d.toISOString()) : fmtD(d.toISOString());
+    out += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${padT}" y2="${H - padB}"/><text class="axis" x="${x(t)}" y="${H - padB + 16}" text-anchor="middle">${lab}</text>`;
+  }
+  out += `<line class="grid" x1="${padL}" x2="${W - padR}" y1="${y(0)}" y2="${y(0)}" style="stroke:#2c3d60"/>`;
+  // 線と終端ラベル（重なりを避けて並べ替え）
+  const ends = [];
+  for (const c of codes) {
+    const d = pts.map((p) => `${x(new Date(p.t).getTime()).toFixed(1)},${y(shareOf(p, c)).toFixed(1)}`).join(' ');
+    out += `<polyline class="ln" data-code="${c}" points="${d}" stroke="${colorOf(c)}"/>`;
+    ends.push({ c, y: y(shareOf(pts[pts.length - 1], c)), v: shareOf(pts[pts.length - 1], c) });
+  }
+  ends.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
+  for (const e of ends.slice(0, 4)) out += `<text class="lab" x="${W - padR + 6}" y="${e.y + 4}" fill="${colorOf(e.c)}" style="fill:${colorOf(e.c)}">${esc(nameOf(e.c))} ${fmtPct(e.v)}</text>`;
+  out += `<line class="cross" id="cross" y1="${padT}" y2="${H - padB}"/>`;
+  out += codes.map((c) => `<circle class="pt" data-code="${c}" r="4" stroke="${colorOf(c)}" style="display:none"/>`).join('');
+  out += `<rect x="${padL}" y="${padT}" width="${W - padL - padR}" height="${H - padT - padB}" fill="transparent" id="hit"/>`;
+  svg.innerHTML = out;
+
+  // ホバー: 最も近い時刻の全系列を表示
+  const tip = $('#lineTip'), cross = $('#cross'), hit = $('#hit');
+  const xs = pts.map((p) => new Date(p.t).getTime());
+  const move = (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) / rect.width * W;
+    const tt = t0 + (px - padL) / (W - padL - padR) * (t1 - t0);
+    let bi = 0; for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - tt) < Math.abs(xs[bi] - tt)) bi = i;
+    const p = pts[bi], cx = x(xs[bi]);
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = 'block';
+    svg.querySelectorAll('.pt').forEach((el) => { el.setAttribute('cx', cx); el.setAttribute('cy', y(shareOf(p, el.dataset.code))); el.style.display = 'block'; });
+    const rowsHtml = codes.map((c) => ({ c, v: shareOf(p, c) })).sort((a, b) => b.v - a.v)
+      .map((r) => `<div class="r"><i style="background:${colorOf(r.c)}"></i>${esc(nameOf(r.c))}<span class="v">${fmtPct(r.v)}%</span></div>`).join('');
+    tip.innerHTML = `<div class="t">${state.grain === 'day' ? p.day + '（日別平均・' + p.n + ' 回）' : fmtDTfull(p.t)}</div>${rowsHtml}`;
+    tip.style.display = 'block';
+    const wrapRect = svg.parentElement.getBoundingClientRect();
+    const lx = ev.clientX - wrapRect.left, ly = ev.clientY - wrapRect.top;
+    tip.style.left = (lx + 14 + tip.offsetWidth > wrapRect.width ? lx - tip.offsetWidth - 14 : lx + 14) + 'px';
+    tip.style.top = Math.max(0, ly - 10) + 'px';
+  };
+  const leave = () => { tip.style.display = 'none'; cross.style.display = 'none'; svg.querySelectorAll('.pt').forEach((el) => el.style.display = 'none'); };
+  hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', (e) => move(e.touches[0]), {passive:true});
+  hit.addEventListener('mouseleave', leave); hit.addEventListener('touchend', leave);
+
+  // 表（日別平均）
+  const days = dailyRows(rows);
+  $('#lineTable').innerHTML = `<table class="rank"><thead><tr><th>日付</th><th class="n">回数</th>${codes.map((c) => `<th class="n">${esc(nameOf(c))}</th>`).join('')}</tr></thead><tbody>` +
+    days.map((d) => `<tr><td>${d.day}</td><td class="n">${d.n}</td>${codes.map((c) => `<td class="n">${fmtPct(shareOf(d, c))}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+}
+
+/* ── 描画: ランキング表（スパークライン付き） ── */
+function renderRank(rows, st){
+  const maxAvg = st[0]?.avg || 1;
+  const list = st.slice(0, 25);
+  $('#rank tbody').innerHTML = list.map((x, i) => {
+    const cls = x.delta > .3 ? 'up' : x.delta < -.3 ? 'down' : '';
+    return `<tr><td class="c">${i + 1}</td><td><span class="sw" style="background:${colorOf(x.code)}"></span><span class="flag">${flag(x.code)}</span>${esc(nameOf(x.code))}</td>` +
+      `<td class="barwrap"><div class="bar" style="width:${(x.avg / maxAvg * 100).toFixed(1)}%;background:${colorOf(x.code)}"></div></td>` +
+      `<td class="n">${fmtPct(x.avg)}</td><td class="n">${fmtPct(x.max)}</td><td class="n"><span class="trend ${cls}">${x.delta > 0 ? '▲' : x.delta < 0 ? '▼' : '±'}${Math.abs(x.delta).toFixed(1)}</span></td>` +
+      `<td><canvas class="sp" data-code="${x.code}" width="140" height="36"></canvas></td></tr>`;
+  }).join('');
+  $('#rankSub').textContent = `${state.layer === 'l7' ? 'L7 HTTP DDoS' : 'L3/4 DDoS'} · ${rows.length} 回の平均 · 上位 ${list.length}`;
+  const pts = state.grain === 'day' ? dailyRows(rows) : rows;
+  $('#rank').querySelectorAll('canvas.sp').forEach((cv) => {
+    const vals = pts.map((p) => shareOf(p, cv.dataset.code));
+    const ctx = cv.getContext('2d'); const w = cv.width, h = cv.height, mx = Math.max(...vals, 0.001);
+    ctx.clearRect(0, 0, w, h); ctx.strokeStyle = colorOf(cv.dataset.code); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+    vals.forEach((v, i) => { const px = 2 + i / Math.max(1, vals.length - 1) * (w - 4), py = h - 3 - v / mx * (h - 6); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.stroke();
+  });
+}
+
+/* ── 描画: 時刻を選んで見る ─────────────── */
+function renderSnapNav(rows){
+  const sel = $('#snapSel'), rng = $('#snapRange');
+  if (state.snapIdx < 0 || state.snapIdx >= rows.length) state.snapIdx = rows.length - 1;
+  sel.innerHTML = rows.map((r, i) => `<option value="${i}">${fmtDTfull(r.t)}</option>`).join('');
+  sel.value = state.snapIdx; rng.max = Math.max(0, rows.length - 1); rng.value = state.snapIdx;
+  $('#prevSnap').disabled = state.snapIdx <= 0; $('#nextSnap').disabled = state.snapIdx >= rows.length - 1;
+  renderSnap(rows);
+}
+function renderSnap(rows){
+  const r = rows[state.snapIdx]; if (!r) { $('#snapRank tbody').innerHTML = ''; return; }
+  const prev = rows[state.snapIdx - 1];
+  const tgt = new Date(r.t).getTime() - 86400000;
+  let dayAgo = null; for (const q of rows) { if (new Date(q.t).getTime() <= tgt) dayAgo = q; else break; }
+  const delta = (base, c) => {
+    if (!base) return '<span class="trend">—</span>';
+    const p = shareOf(base, c), d = shareOf(r, c) - p;
+    if (!p && d > 0) return '<span class="trend up">NEW</span>';
+    const cls = d > .05 ? 'up' : d < -.05 ? 'down' : '';
+    return `<span class="trend ${cls}">${d > 0 ? '▲' : d < 0 ? '▼' : '±'}${Math.abs(d).toFixed(1)}</span>`;
+  };
+  const list = (r[state.layer] || []).slice(0, 20);
+  $('#snapRank tbody').innerHTML = list.map(([c, s], i) =>
+    `<tr><td class="c">${i + 1}</td><td><span class="sw" style="background:${colorOf(c)}"></span><span class="flag">${flag(c)}</span>${esc(nameOf(c))}</td><td class="n">${fmtPct(s)}</td><td class="n">${delta(prev, c)}</td><td class="n">${delta(dayAgo, c)}</td></tr>`).join('')
+    || '<tr><td colspan="5" style="color:var(--muted)">この回には当該種別のデータがありません</td></tr>';
+  const upd = r.updated?.[state.layer];
+  $('#snapNote').textContent = `集計窓: 直近 ${r.range}${upd ? ' · Radar 側の最終更新 ' + fmtDTfull(upd) : ''}${r.l7PeakAt && state.layer === 'l7' ? ' · L7 攻撃量ピーク ' + fmtDT(r.l7PeakAt) : ''}${r.errors ? ' · 取得時の警告 ' + r.errors + ' 件' : ''}`;
+  renderIndustries(r);
+}
+function renderIndustries(r){
+  const rows = periodRows();
+  const keys = state.layer === 'l7' ? ['industries', 'verticals'] : ['industriesL3', 'verticalsL3'];
+  const titles = ['業種', '分野'];
+  let html = '';
+  keys.forEach((k, i) => {
+    const sum = new Map(); let n = 0;
+    for (const q of rows) { if (!q[k]) continue; n++; for (const [name, s] of q[k]) sum.set(name, (sum.get(name) || 0) + s); }
+    if (!n) return;
+    const list = [...sum.entries()].map(([name, s]) => [name, s / n]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const mx = list[0]?.[1] || 1;
+    html += `<h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:8px 0 4px">${titles[i]} <small style="font-weight:400;letter-spacing:0;text-transform:none">期間平均 · ${n} 回</small></h3>` +
+      list.map(([name, s]) => { const ja = industryJa(name); return `<div class="row"><span class="nm">${ja ? esc(ja) + ' <span class="en">' + esc(name) + '</span>' : esc(name)}</span><span class="bw"><i class="${state.layer}" style="width:${(s / mx * 100).toFixed(1)}%"></i></span><span class="v">${fmtPct(s)}%</span></div>`; }).join('');
+  });
+  $('#industries').innerHTML = html || '<div style="color:var(--muted);font-size:12px">この種別の業種データはありません</div>';
+  $('#indSub').textContent = `期間平均 · ${state.layer === 'l7' ? 'L7' : 'L3/4'}`;
+}
+
+/* ── 全体の再描画 ───────────────────────── */
+function render(){
+  const rows = periodRows();
+  const st = stats(rows);
+  renderTiles(rows, st);
+  const codes = renderChips(st);
+  $('#lineSub').textContent = `${state.layer === 'l7' ? 'L7 HTTP DDoS' : 'L3/4 DDoS'} · ${state.grain === 'day' ? '日別平均' : '取得ごと（直近 24 時間の集計値）'} · 日本時間`;
+  renderLine(rows, codes);
+  renderRank(rows, st);
+  renderSnapNav(rows);
+}
+
+/* ── 操作 ───────────────────────────────── */
+function seg(id, attr, onChange){
+  $(id).querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    $(id).querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    onChange(b.dataset[attr]); render();
+  }));
+}
+seg('#layerSeg', 'layer', (v) => { state.layer = v; state.hidden.clear(); });
+seg('#periodSeg', 'days', (v) => { state.days = Number(v); state.snapIdx = -1; });
+seg('#grainSeg', 'grain', (v) => { state.grain = v; });
+$('#snapSel').addEventListener('change', (e) => { state.snapIdx = Number(e.target.value); renderSnapNav(periodRows()); });
+$('#snapRange').addEventListener('input', (e) => { state.snapIdx = Number(e.target.value); renderSnapNav(periodRows()); });
+let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(() => { if (state.rows.length) render(); }, 150); });
+$('#prevSnap').addEventListener('click', () => { state.snapIdx--; renderSnapNav(periodRows()); });
+$('#nextSnap').addEventListener('click', () => { state.snapIdx++; renderSnapNav(periodRows()); });
+
+load().then(() => {
+  const n = state.rows.length;
+  if (!n) { $('#loadMsg').textContent = '履歴がまだありません。GitHub Actions の「attack-map feed」が実行されると data/history/ にデータが溜まります。'; $('#rangeChip').textContent = 'データなし'; return; }
+  $('#loadMsg').hidden = true; $('#main').hidden = false;
+  $('#rangeChip').textContent = `${n} 回分 · ${fmtD(state.rows[0].t)} 〜 ${fmtDTfull(state.rows[n - 1].t)} JST`;
+  render();
+}).catch((e) => {
+  $('#loadMsg').className = 'card msg err';
+  $('#loadMsg').textContent = '履歴データを読み込めませんでした: ' + e.message + '（data/history/index.json がまだ無い可能性があります）';
+  $('#rangeChip').className = 'chip err'; $('#rangeChip').textContent = '読み込み失敗';
+});
+</script>
+</body>
+</html>
