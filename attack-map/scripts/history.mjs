@@ -73,11 +73,6 @@ async function listMonthFiles() {
   if (!existsSync(dir)) return [];
   return (await readdir(dir)).filter((f) => /^\d{4}-\d{2}\.jsonl$/.test(f)).sort();
 }
-async function readAllRows() {
-  const all = [];
-  for (const f of await listMonthFiles()) all.push(...await readRows(join(dir, f)));
-  return all.sort((a, b) => a.t.localeCompare(b.t));
-}
 
 /** 行を追加する。すでに同じ t があれば false */
 async function appendRows(rows) {
