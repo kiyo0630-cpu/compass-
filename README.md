@@ -13,14 +13,16 @@ GitHub Pages で公開している個人用 Web ページ群と、その生成�
 | `caffeine/` | **カフェイン時計** — 体内カフェイン量の時間推移 | 単一 HTML |
 | `e-card-src/` → `e-card/` | **Eカード 極限心理戦** — カイジの E カード対 CPU。`e-card-src/` がソース、`e-card/` がビルド成果物。詳細は [e-card-src/README.md](e-card-src/README.md) | React + Vite + Tailwind |
 | `keiba/` | **競馬予想シミュレーター** — TARGET frontier JV データで市場確率の校正と特徴量検証。詳細は [keiba/README.md](keiba/README.md) | Python（numpy / pandas） |
+| `nikkei225-momentum/` | **日経225 月次モメンタム（株価データ）** — 構成銘柄の終値 CSV を毎営業日に自動更新する。運用本体は Google Drive 側。詳細は [nikkei225-momentum/README.md](nikkei225-momentum/README.md) | Python（yfinance / pandas） |
 
 ## 自動化（GitHub Actions）
 
 | ワークフロー | 役割 |
 |---|---|
-| `ci.yml` | push / PR ごとに Lint とテスト（下記）。`attack-map/data/` と `reports/` だけの変更では走らない |
+| `ci.yml` | push / PR ごとに Lint とテスト（下記）。`attack-map/data/`・`reports/`・`nikkei225-momentum/data/` だけの変更では走らない |
 | `attack-map-feed.yml` | 毎時 Cloudflare Radar から日本向け攻撃のスナップショットを取得し `attack-map/data/latest.json` をコミット。Secrets に `CLOUDFLARE_API_TOKEN` が必要（任意で `CLOUDFLARE_ZONE_IDS`） |
 | `e-card-build.yml` | `e-card-src/` が main で変わったら Vite でビルドし `e-card/` にコミット |
+| `nikkei225-prices.yml` | 平日 17:23 JST に Yahoo Finance から日経225 構成銘柄の終値（約2年分）と株式分割を取得し `nikkei225-momentum/data/` にコミット。Claude の定期タスク「日経225 月次モメンタム リバランス」がこれを読む |
 
 ## セットアップ
 
