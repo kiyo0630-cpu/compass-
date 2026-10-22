@@ -114,7 +114,7 @@ td.spec{font-weight:500;background:#e4efe6}
 <div class="card">
   <h2>固定の曜日</h2>
   <div class="tablewrap"><table style="min-width:420px" id="fixedGrid"></table></div>
-  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山、関口・須田はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。</p>
+  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山、関口・須田はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。関口・須田は尾上・片山がいない日を優先します。</p>
 </div>
 
 <div class="card">
@@ -132,7 +132,7 @@ td.spec{font-weight:500;background:#e4efe6}
   </p>
   <p class="help" style="margin-bottom:10px">各メンバーの出社率は「基準月の初日時点で、基準日数分の実績から出した値」として入力します。基準月以降は、この表の割り当て(休暇を除く)を出社として積み上げ、出社率を更新しながら空席を埋めます。</p>
   <div class="members" id="members"></div>
-  <p class="help">自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
+  <p class="help">自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。関口・須田は尾上・片山が座っている日を後回しにします。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
   <p style="margin-top:8px"><button class="btn danger" id="reset">保存データをすべて消す</button></p>
 </div>
 
@@ -140,14 +140,14 @@ td.spec{font-weight:500;background:#e4efe6}
 <script>
 // ---------- 固定ルール ----------
 // weekday: 1=月 2=火 3=水 4=木 5=金
-// daily: 毎日固定。fixed: 既定の固定曜日(ページ上で変更可)。pair: できるだけ同日にする相手
+// daily: 毎日固定。fixed: 既定の固定曜日(ページ上で変更可)。pair: できるだけ同日にする相手。avoid: いない日を狙う相手
 const MEMBERS = [
   {id:'nishikawa', name:'西川', daily:true},
   {id:'shimao',    name:'島尾', daily:true},
   {id:'onoe',      name:'尾上', fixed:[1,2], pair:'katayama'},
   {id:'katayama',  name:'片山', fixed:[1,2], pair:'onoe'},
-  {id:'sekiguchi', name:'関口', fixed:[3,5], pair:'suda'},
-  {id:'suda',      name:'須田', fixed:[3,5], pair:'sekiguchi'},
+  {id:'sekiguchi', name:'関口', fixed:[], pair:'suda', avoid:['onoe','katayama']},
+  {id:'suda',      name:'須田', fixed:[], pair:'sekiguchi', avoid:['onoe','katayama']},
   {id:'baba',      name:'馬場', fixed:[1]},
   {id:'kadono',    name:'門野', fixed:[2]},
   {id:'hirota',    name:'廣田', fixed:[3]},
@@ -206,7 +206,7 @@ if(state.presetVersion!==PRESET.version){
   PRESET.closed.forEach(k=>{ if(!state.closed.includes(k)) state.closed.push(k); });
   state.presetVersion=PRESET.version; save();
 }
-const FIXED_VERSION=2; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
+const FIXED_VERSION=3; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
 if(!state.fixed||state.fixedVersion!==FIXED_VERSION){ state.fixed={}; state.fixedVersion=FIXED_VERSION; }
 MEMBERS.forEach(m=>{ if(!m.daily&&!state.fixed[m.id]) state.fixed[m.id]=(m.fixed||[]).slice(); });
 if(!state.base) state.base={};
@@ -266,14 +266,26 @@ function assignDay(d, rateOf){
   seats.forEach(s=>{ if(s.id&&onLeave(s.id)){ s.id=null; s.fixed=false; s.kind='auto'; } if(s.id) used.add(s.id); });
   const ov=state.overrides[key]||{};
   seats.forEach((s,i)=>{ if(s.fixed) return; const o=ov[i]; if(o&&!used.has(o)&&!onLeave(o)){ s.id=o; s.manual=true; used.add(o);} });
-  // 自動席: ペアの相手がその日すでに座っていれば最優先、次に出社率の低い順
-  const score=m=>(m.pair&&used.has(m.pair)?-1:0)+rateOf(m.id);
-  seats.forEach(s=>{
-    if(s.id) return;
-    const pool=MEMBERS.filter(m=>!m.daily&&!used.has(m.id)&&!onLeave(m.id))
-      .sort((a,b)=>(score(a)-score(b))||(MEMBERS.indexOf(a)-MEMBERS.indexOf(b)));
-    const m=pool[0]; if(m){ s.id=m.id; used.add(m.id); }
-  });
+  // 自動席: 出社率の低い順。ペアは2席空いていれば2人まとめて(低い方の率で)候補にし、
+  // 相手がすでに座っていれば最優先、相手がいるのに1人だけ入る場合は後回し。
+  // 避けたい相手(avoid)が座っている日は後回し。
+  const avail=m=>!used.has(m.id)&&!onLeave(m.id);
+  const baseScore=m=>((m.avoid||[]).some(a=>used.has(a))?1:0)+rateOf(m.id);
+  const openSeats=()=>seats.filter(x=>!x.id);
+  while(openSeats().length){
+    const cands=[];
+    MEMBERS.filter(m=>!m.daily&&avail(m)).forEach(m=>{
+      const partner=m.pair?memberById(m.pair):null;
+      if(partner&&used.has(partner.id)) cands.push({ids:[m.id], score:baseScore(m)-1});
+      else if(partner&&avail(partner)){
+        if(openSeats().length>=2){ if(MEMBERS.indexOf(m)<MEMBERS.indexOf(partner)) cands.push({ids:[m.id,partner.id], score:Math.min(baseScore(m),baseScore(partner))}); }
+        else cands.push({ids:[m.id], score:baseScore(m)+0.5});
+      } else cands.push({ids:[m.id], score:baseScore(m)});
+    });
+    if(!cands.length) break;
+    cands.sort((a,b)=>(a.score-b.score)||(MEMBERS.indexOf(memberById(a.ids[0]))-MEMBERS.indexOf(memberById(b.ids[0]))));
+    cands[0].ids.forEach(id=>{ const slot=openSeats()[0]; slot.id=id; used.add(id); });
+  }
   return seats;
 }
 // 基準月の初日から untilDate まで日を追って割り当て、各日の席と出社率の推移を返す
@@ -404,7 +416,7 @@ function renderMembers(){
     const div=document.createElement('div'); div.className='member';
     const leaves=state.leaves[m.id].slice().sort();
     const specs=state.specified[m.id].slice().sort();
-    const label=m.daily?'毎日':((state.fixed[m.id]||[]).map(w=>WDN[w]).join('・')||'固定なし')+(m.pair?'(ペア: '+memberById(m.pair).name+')':'');
+    const label=m.daily?'毎日':((state.fixed[m.id]||[]).map(w=>WDN[w]).join('・')||'固定なし')+(m.pair?'(ペア: '+memberById(m.pair).name+')':'')+(m.avoid?'('+m.avoid.map(a=>memberById(a).name).join('・')+'がいない日)':'');
     div.innerHTML=`<div class="name"><span>${m.name}</span><span class="rule">${label}</span></div>
       <div class="rate">基準月時点の出社率 <input type="number" min="0" max="100" step="0.1" value="${state.rates[m.id]}" data-id="${m.id}"> %</div>
       <div>休暇 <input type="date" data-leave="${m.id}"></div>
