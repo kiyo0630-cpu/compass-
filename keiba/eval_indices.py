@@ -14,7 +14,7 @@ ZI / マイニング（タイム型 DM）/ 対戦型マイニング（TM）に
   3. 単純ルールの回収率: 「指数順位が人気より k 以上高い馬」の単勝・複勝回収率と信頼区間
 依存: numpy, pandas のみ
 """
-import sys, glob, os, re, argparse
+import sys, glob, os, argparse
 import numpy as np
 import pandas as pd
 

@@ -105,6 +105,26 @@ node attack-map/scripts/history.mjs backfill   # git 履歴にある過去の la
 node attack-map/scripts/history.mjs rebuild    # index.json と daily.csv を jsonl から作り直す
 ```
 
+## 異常検知アラート
+
+`attack-map feed` ワークフローはフィード取得のあとに `attack-map/scripts/detect-anomalies.mjs` を実行し、
+最新スナップショットを**直近 7 日のベースライン**（`latest.json` の過去コミット、git 履歴から復元）と比べて
+`attack-map/data/alerts.json` に結果を書き出します。実行ごとの Markdown 要約は Actions のジョブサマリーにも出ます。
+
+| 種別 | 判定（シェアは %） | 重要度 |
+|---|---|---|
+| `volume-surge` | L7 攻撃量の時系列で、直近 2 時間に 24 時間のピークがあり、普段（中央値）がピークの 40% 以下 | warn |
+| `l7-surge` | L7 送信元国のシェアが 5% 以上で、7 日平均の 2 倍・+5pt・+3σ をすべて超えた | warn |
+| `l3-new-dominant` | L3 送信元の首位が 50% 以上で、その国の 7 日平均が 10% 未満（新顔の大型 DDoS） | warn |
+| `industry-spike` | 被害業種（L7）のシェアが 25% 以上で、7 日平均 +10pt かつ +3σ を超えた | warn |
+| `feed` | 国別データが空（warn）/ 一部の API だけ失敗（info） | warn / info |
+| `l7-drop`, `l3-single-source` | 平均 10% 以上の国が半減・圏外、L3 首位が 90% 以上の集中 | info |
+
+- `alerts.json` の `status` は `ok` / `info` / `warn`。`alerts[].id` は「種別:対象:UTC 日付」で、同じ日の再検出は同じ ID になります。
+- ベースラインが 3 件未満のとき（導入直後など）は国別・業種の判定を保留し、`baseline.sufficient: false` を記録します。
+- しきい値はスクリプト冒頭の `RULES` にまとめてあります。ローカル実行: `node attack-map/scripts/detect-anomalies.mjs --out /tmp/alerts.json`
+- `warn` が出たときの通知は、このリポジトリとは別に、プロジェクト側の定期チェックが `alerts.json` を読んで行います（ワークフロー自体は失敗しません。`--fail-on-alert` を付けると warn でジョブを失敗させられます）。
+
 ## 攻撃を「受けている側」を見る
 
 被害を受けた**個別の IP アドレスやドメイン**は、被害者側が公表しないため公開データには存在しません。
@@ -169,7 +189,9 @@ attack-map/
   data/targets.json       上記の出力（CLOUDFLARE_ZONE_IDS 設定時のみ）
   worker/radar-proxy.js   Cloudflare Worker プロキシ
   worker/wrangler.toml
+tests/                    上記スクリプト・Worker のテスト（npm test）
 .github/workflows/attack-map-feed.yml
+.github/workflows/ci.yml  Lint とテスト
 ```
 
 ローカルで試す:
@@ -178,6 +200,19 @@ attack-map/
 CLOUDFLARE_API_TOKEN=xxxx node attack-map/scripts/fetch-radar.mjs --out attack-map/data/latest.json --range 1d
 python3 -m http.server 8000   # http://localhost:8000/attack-map/
 ```
+
+## 開発・テスト
+
+リポジトリのルートで実行します（Node.js 22 以上）。
+
+```sh
+npm ci
+npm run lint   # ESLint（scripts/ と worker/）
+npm test       # tests/ のユニットテスト。Cloudflare API はモックで差し替えるのでトークン不要
+```
+
+Worker は `caches.default` と `fetch` を差し替えて Node.js 上でテストしています。
+`wrangler dev` で実機確認したい場合は `attack-map/worker/` で `npx wrangler dev` を実行してください。
 
 ## 参考資料
 
