@@ -3,12 +3,16 @@
 // GitHub Actions（fetch-radar.mjs）と Cloudflare Worker（worker/radar-proxy.js）の両方から使う。
 
 const API = 'https://api.cloudflare.com/client/v4/radar/attacks';
+const TIMEOUT_MS = 30_000; // Radar が応答しないときに Actions / Worker を長く待たせない
 export const DATE_RANGES = ['1h', '6h', '1d', '7d', '14d', '28d'];
 
 async function radarGet(path, params, token) {
   const url = new URL(API + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
   const text = await res.text();
   let body;
   try { body = JSON.parse(text); } catch { throw new Error(`${path}: HTTP ${res.status} (JSON ではない応答)`); }

@@ -127,7 +127,9 @@ attack-map/
   data/targets.json       上記の出力（CLOUDFLARE_ZONE_IDS 設定時のみ）
   worker/radar-proxy.js   Cloudflare Worker プロキシ
   worker/wrangler.toml
+tests/                    上記スクリプト・Worker のテスト（npm test）
 .github/workflows/attack-map-feed.yml
+.github/workflows/ci.yml  Lint とテスト
 ```
 
 ローカルで試す:
@@ -136,6 +138,19 @@ attack-map/
 CLOUDFLARE_API_TOKEN=xxxx node attack-map/scripts/fetch-radar.mjs --out attack-map/data/latest.json --range 1d
 python3 -m http.server 8000   # http://localhost:8000/attack-map/
 ```
+
+## 開発・テスト
+
+リポジトリのルートで実行します（Node.js 22 以上）。
+
+```sh
+npm ci
+npm run lint   # ESLint（scripts/ と worker/）
+npm test       # tests/ のユニットテスト。Cloudflare API はモックで差し替えるのでトークン不要
+```
+
+Worker は `caches.default` と `fetch` を差し替えて Node.js 上でテストしています。
+`wrangler dev` で実機確認したい場合は `attack-map/worker/` で `npx wrangler dev` を実行してください。
 
 ## 参考資料
 
