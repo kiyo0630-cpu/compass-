@@ -1,0 +1,65 @@
+name: CI
+
+# push / PR ごとに Lint とテストを走らせる。
+#   - attack-map のスクリプト・Worker: ESLint + node:test（tests/）
+#   - keiba の Python: ruff
+#   - e-card-src: oxlint + 型チェック + Vite ビルド（成果物はコミットしない。e-card/ への反映は e-card-build.yml）
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'attack-map/data/**'   # フィードの自動コミットでは走らせない
+      - 'reports/**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Lint & test (attack-map)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  python:
+    name: Lint (keiba)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check keiba
+      - name: Syntax check
+        run: python3 -m py_compile keiba/*.py
+
+  e-card:
+    name: Lint & build (e-card-src)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: e-card-src
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: e-card-src/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc -b
+      - name: Build (出力は検証のみ)
+        run: npx vite build --outDir "$RUNNER_TEMP/e-card-dist"
