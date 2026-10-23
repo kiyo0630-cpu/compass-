@@ -1,28 +1,27 @@
 {
  "schema": 1,
- "generatedAt": "2026-10-23T10:05:05.263Z",
- "snapshotGeneratedAt": "2026-10-23T10:05:05.074Z",
+ "generatedAt": "2026-10-23T15:05:14.436Z",
+ "snapshotGeneratedAt": "2026-10-23T15:05:14.085Z",
  "target": "JP",
  "dateRange": "1d",
- "status": "warn",
+ "status": "info",
  "baseline": {
   "samples": 39,
   "days": 7,
-  "from": "2026-10-16T12:26:31.440Z",
-  "to": "2026-10-23T04:51:26.219Z",
+  "from": "2026-10-16T17:25:29.283Z",
+  "to": "2026-10-23T10:05:05.074Z",
   "sufficient": true
  },
  "alerts": [
   {
-   "id": "volume-surge:l7:2026-10-23",
-   "severity": "warn",
-   "kind": "volume-surge",
-   "key": "l7",
-   "title": "日本向け L7 攻撃量が直近で急増",
-   "detail": "直近 120 分以内にこの 24 時間のピーク（通常時の約 3 倍）。ピーク時刻 2026-10-23T07:30:00Z",
-   "value": 1,
-   "baseline": 0.3,
-   "peakAt": "2026-10-23T07:30:00Z"
+   "id": "l3-single-source:BG:2026-10-23",
+   "severity": "info",
+   "kind": "l3-single-source",
+   "key": "BG",
+   "title": "L3 送信元が Bulgaria にほぼ集中",
+   "detail": "92.7%",
+   "value": 92.7,
+   "baseline": 33.1
   }
  ]
 }
