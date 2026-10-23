@@ -1,15 +1,15 @@
 {
  "schema": 1,
- "generatedAt": "2026-10-23T04:51:26.621Z",
- "snapshotGeneratedAt": "2026-10-23T04:51:26.219Z",
+ "generatedAt": "2026-10-23T10:05:05.263Z",
+ "snapshotGeneratedAt": "2026-10-23T10:05:05.074Z",
  "target": "JP",
  "dateRange": "1d",
  "status": "warn",
  "baseline": {
   "samples": 39,
   "days": 7,
-  "from": "2026-10-16T07:11:26.498Z",
-  "to": "2026-10-22T23:23:26.304Z",
+  "from": "2026-10-16T12:26:31.440Z",
+  "to": "2026-10-23T04:51:26.219Z",
   "sufficient": true
  },
  "alerts": [
@@ -19,10 +19,10 @@
    "kind": "volume-surge",
    "key": "l7",
    "title": "日本向け L7 攻撃量が直近で急増",
-   "detail": "直近 120 分以内にこの 24 時間のピーク（通常時の約 3 倍）。ピーク時刻 2026-10-23T02:45:00Z",
+   "detail": "直近 120 分以内にこの 24 時間のピーク（通常時の約 3 倍）。ピーク時刻 2026-10-23T07:30:00Z",
    "value": 1,
-   "baseline": 0.4,
-   "peakAt": "2026-10-23T02:45:00Z"
+   "baseline": 0.3,
+   "peakAt": "2026-10-23T07:30:00Z"
   }
  ]
 }
