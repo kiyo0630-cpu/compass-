@@ -3,127 +3,127 @@
  "provider": "cloudflare-radar",
  "target": "JP",
  "dateRange": "1d",
- "generatedAt": "2026-10-24T11:02:48.797Z",
+ "generatedAt": "2026-10-24T14:34:15.881Z",
  "note": "日本を標的（宛先）とする攻撃の送信元国シェア（%）。IP の地理情報に基づく。",
  "l7": [
   {
    "code": "US",
    "name": "United States",
-   "share": 21.540507,
+   "share": 20.926941,
    "rank": 1
   },
   {
    "code": "CN",
    "name": "China",
-   "share": 6.095209,
+   "share": 6.568676,
    "rank": 2
   },
   {
    "code": "SG",
    "name": "Singapore",
-   "share": 5.06972,
+   "share": 5.062732,
    "rank": 3
   },
   {
    "code": "ID",
    "name": "Indonesia",
-   "share": 4.394458,
+   "share": 4.46511,
    "rank": 4
   },
   {
    "code": "DE",
    "name": "Germany",
-   "share": 4.31683,
+   "share": 4.384525,
    "rank": 5
-  },
-  {
-   "code": "FR",
-   "name": "France",
-   "share": 4.140162,
-   "rank": 6
   },
   {
    "code": "NL",
    "name": "Netherlands",
-   "share": 3.890915,
+   "share": 3.953301,
+   "rank": 6
+  },
+  {
+   "code": "FR",
+   "name": "France",
+   "share": 3.608966,
    "rank": 7
   },
   {
    "code": "BR",
    "name": "Brazil",
-   "share": 3.092652,
+   "share": 3.093502,
    "rank": 8
   },
   {
    "code": "IN",
    "name": "India",
-   "share": 2.694814,
+   "share": 2.752564,
    "rank": 9
   },
   {
    "code": "KR",
    "name": "Korea, South",
-   "share": 2.5336,
+   "share": 2.619264,
    "rank": 10
   },
   {
    "code": "AR",
    "name": "Argentina",
-   "share": 2.285829,
+   "share": 2.322957,
    "rank": 11
   },
   {
    "code": "GB",
    "name": "United Kingdom",
-   "share": 1.899638,
+   "share": 1.867393,
    "rank": 12
-  },
-  {
-   "code": "RU",
-   "name": "Russian Federation",
-   "share": 1.801078,
-   "rank": 13
   },
   {
    "code": "JP",
    "name": "Japan",
-   "share": 1.774857,
-   "rank": 14
-  },
-  {
-   "code": "VN",
-   "name": "Vietnam",
-   "share": 1.6842,
-   "rank": 15
+   "share": 1.777112,
+   "rank": 13
   },
   {
    "code": "BE",
    "name": "Belgium",
-   "share": 1.58234,
+   "share": 1.754299,
+   "rank": 14
+  },
+  {
+   "code": "RU",
+   "name": "Russian Federation",
+   "share": 1.731739,
+   "rank": 15
+  },
+  {
+   "code": "VN",
+   "name": "Vietnam",
+   "share": 1.730745,
    "rank": 16
   },
   {
    "code": "CA",
    "name": "Canada",
-   "share": 1.549876,
+   "share": 1.574708,
    "rank": 17
   },
   {
    "code": "HK",
    "name": "Hong Kong",
-   "share": 1.490274,
+   "share": 1.471188,
    "rank": 18
   },
   {
    "code": "TR",
    "name": "Turkey",
-   "share": 1.398044,
+   "share": 1.444772,
    "rank": 19
   },
   {
    "code": "MX",
    "name": "Mexico",
-   "share": 1.234651,
+   "share": 1.256036,
    "rank": 20
   }
  ],
@@ -131,80 +131,84 @@
   {
    "code": "BG",
    "name": "Bulgaria",
-   "share": 94.945116,
+   "share": 94.917989,
    "rank": 1
   },
   {
    "code": "NL",
    "name": "Netherlands",
-   "share": 4.037614,
+   "share": 3.882092,
    "rank": 2
   },
   {
    "code": "PK",
    "name": "Pakistan",
-   "share": 0.478921,
+   "share": 0.457112,
    "rank": 3
-  },
-  {
-   "code": "ID",
-   "name": "Indonesia",
-   "share": 0.136335,
-   "rank": 4
   },
   {
    "code": "BD",
    "name": "Bangladesh",
-   "share": 0.11536,
+   "share": 0.208389,
+   "rank": 4
+  },
+  {
+   "code": "DE",
+   "name": "Germany",
+   "share": 0.094111,
    "rank": 5
   },
   {
    "code": "NP",
    "name": "Nepal",
-   "share": 0.09089,
+   "share": 0.087389,
    "rank": 6
+  },
+  {
+   "code": "ID",
+   "name": "Indonesia",
+   "share": 0.087389,
+   "rank": 7
   },
   {
    "code": "FR",
    "name": "France",
-   "share": 0.069915,
-   "rank": 7
+   "share": 0.067222,
+   "rank": 8
+  },
+  {
+   "code": "ZA",
+   "name": "South Africa",
+   "share": 0.043695,
+   "rank": 9
   },
   {
    "code": "CO",
    "name": "Colombia",
-   "share": 0.045445,
-   "rank": 8
+   "share": 0.043695,
+   "rank": 10
   },
   {
    "code": "RU",
    "name": "Russian Federation",
-   "share": 0.045445,
-   "rank": 9
+   "share": 0.043695,
+   "rank": 11
+  },
+  {
+   "code": "SG",
+   "name": "Singapore",
+   "share": 0.033611,
+   "rank": 12
   },
   {
    "code": "CA",
    "name": "Canada",
-   "share": 0.034958,
-   "rank": 10
+   "share": 0.033611,
+   "rank": 13
   }
  ],
  "series": {
   "timestamps": [
-   "2026-10-23T11:00:00Z",
-   "2026-10-23T11:15:00Z",
-   "2026-10-23T11:30:00Z",
-   "2026-10-23T11:45:00Z",
-   "2026-10-23T12:00:00Z",
-   "2026-10-23T12:15:00Z",
-   "2026-10-23T12:30:00Z",
-   "2026-10-23T12:45:00Z",
-   "2026-10-23T13:00:00Z",
-   "2026-10-23T13:15:00Z",
-   "2026-10-23T13:30:00Z",
-   "2026-10-23T13:45:00Z",
-   "2026-10-23T14:00:00Z",
-   "2026-10-23T14:15:00Z",
    "2026-10-23T14:30:00Z",
    "2026-10-23T14:45:00Z",
    "2026-10-23T15:00:00Z",
@@ -281,326 +285,336 @@
    "2026-10-24T08:45:00Z",
    "2026-10-24T09:00:00Z",
    "2026-10-24T09:15:00Z",
-   "2026-10-24T09:30:00Z"
+   "2026-10-24T09:30:00Z",
+   "2026-10-24T09:45:00Z",
+   "2026-10-24T10:00:00Z",
+   "2026-10-24T10:15:00Z",
+   "2026-10-24T10:30:00Z",
+   "2026-10-24T10:45:00Z",
+   "2026-10-24T11:00:00Z",
+   "2026-10-24T11:15:00Z",
+   "2026-10-24T11:30:00Z",
+   "2026-10-24T11:45:00Z",
+   "2026-10-24T12:00:00Z",
+   "2026-10-24T12:15:00Z",
+   "2026-10-24T12:30:00Z"
   ],
   "values": [
-   0.41926,
-   0.492188,
-   0.373453,
-   0.440507,
-   0.501812,
-   0.614048,
-   0.792838,
+   0.655635,
+   0.607588,
+   0.638623,
+   0.542633,
+   0.612125,
+   0.699454,
+   0.596866,
+   0.604083,
+   0.576967,
+   0.778946,
+   0.724714,
+   0.685225,
+   0.780905,
+   0.744716,
+   0.719868,
+   0.710279,
+   0.658728,
+   0.682854,
+   0.719146,
+   0.825755,
+   0.70399,
+   0.704093,
+   0.794927,
+   0.682854,
+   0.773585,
+   0.779152,
+   0.685019,
+   0.774822,
+   0.790906,
+   0.735334,
+   0.66945,
+   0.644809,
+   0.796474,
+   0.801629,
+   0.705949,
+   0.642128,
+   0.664398,
+   0.737602,
+   0.746263,
+   0.766161,
+   0.563873,
+   0.834622,
+   0.798948,
+   0.673575,
+   0.854315,
+   0.879472,
+   0.777812,
+   0.925147,
+   0.632746,
+   0.802557,
+   0.638829,
+   0.668729,
+   0.626869,
+   0.938138,
+   0.670172,
+   0.775956,
+   0.695536,
+   0.787195,
+   0.675843,
+   0.786473,
+   0.75647,
+   0.747809,
+   0.724301,
+   0.74884,
+   0.659965,
+   0.649758,
+   0.626972,
+   0.553459,
+   0.715538,
+   0.728941,
+   0.847922,
+   0.781318,
+   0.734199,
    1,
-   0.495001,
-   0.382077,
-   0.444444,
-   0.594863,
-   0.487564,
-   0.456443,
-   0.397388,
-   0.368266,
-   0.387077,
-   0.328896,
-   0.371016,
-   0.423947,
-   0.361767,
-   0.366142,
-   0.349706,
-   0.472128,
-   0.439258,
-   0.415323,
-   0.473316,
-   0.451381,
-   0.43632,
-   0.430509,
-   0.399263,
-   0.413886,
-   0.435883,
-   0.5005,
-   0.426697,
-   0.426759,
-   0.481815,
-   0.413886,
-   0.468879,
-   0.472253,
-   0.415198,
-   0.469629,
-   0.479378,
-   0.445694,
-   0.405762,
-   0.390826,
-   0.482752,
-   0.485877,
-   0.427884,
-   0.389201,
-   0.4027,
-   0.447069,
-   0.452318,
-   0.464379,
-   0.34177,
-   0.505874,
-   0.484252,
-   0.408261,
-   0.51781,
-   0.533058,
-   0.471441,
-   0.560742,
-   0.383515,
-   0.486439,
-   0.387202,
-   0.405324,
-   0.379953,
-   0.568616,
-   0.406199,
-   0.470316,
-   0.421572,
-   0.477128,
-   0.409636,
-   0.47669,
-   0.458505,
-   0.453256,
-   0.439008,
-   0.453881,
-   0.400012,
-   0.393826,
-   0.380015,
-   0.335458,
-   0.433696,
-   0.44182,
-   0.513936,
-   0.473566,
-   0.445007,
-   0.606112,
-   0.558243,
-   0.513373,
-   0.512936
+   0.921023,
+   0.846995,
+   0.846273,
+   0.854006,
+   0.825137,
+   0.844108,
+   0.773379,
+   0.963192,
+   0.672956,
+   0.740179,
+   0.707496,
+   0.904526,
+   0.604702,
+   0.968657,
+   0.949582
   ]
  },
  "industries": [
   {
    "name": "Computer Software",
-   "share": 18.143702
-  },
-  {
-   "name": "Research",
-   "share": 15.705052
+   "share": 18.216523
   },
   {
    "name": "Retail",
-   "share": 11.493345
+   "share": 13.127386
+  },
+  {
+   "name": "Research",
+   "share": 12.408042
   },
   {
    "name": "Cryptocurrency",
-   "share": 9.419293
+   "share": 9.669642
   },
   {
    "name": "Information Technology and Services",
-   "share": 7.807753
+   "share": 8.044156
   },
   {
    "name": "Information Services",
-   "share": 6.07403
+   "share": 6.39504
   },
   {
    "name": "Internet",
-   "share": 5.106325
+   "share": 5.423349
   },
   {
    "name": "Gambling & Casinos",
-   "share": 3.574846
+   "share": 3.779015
   },
   {
    "name": "Telecommunications",
-   "share": 3.060726
-  },
-  {
-   "name": "Gaming",
-   "share": 2.231105
-  },
-  {
-   "name": "Adult Entertainment",
-   "share": 2.203768
+   "share": 3.169106
   },
   {
    "name": "Online Media",
-   "share": 1.726471
+   "share": 1.949851
+  },
+  {
+   "name": "Adult Entertainment",
+   "share": 1.773743
+  },
+  {
+   "name": "Gaming",
+   "share": 1.759677
   },
   {
    "name": "Marketing and Advertising",
-   "share": 1.434681
+   "share": 1.405772
   },
   {
    "name": "Real Estate",
-   "share": 1.33314
+   "share": 1.393113
   },
   {
    "name": "Hospitality",
-   "share": 1.328119
+   "share": 1.319687
   },
   {
    "name": "Media",
-   "share": 1.056972
+   "share": 1.056369
   },
   {
    "name": "Financial Services",
-   "share": 1.007596
+   "share": 1.051586
   },
   {
    "name": "Consumer Services",
-   "share": 0.890713
+   "share": 0.881386
   },
   {
    "name": "Construction",
-   "share": 0.669499
+   "share": 0.727783
   },
   {
    "name": "Manufacturing",
-   "share": 0.457212
+   "share": 0.466434
   }
  ],
  "verticals": [
   {
    "name": "Professional Services",
-   "share": 22.50513
+   "share": 19.664193
   },
   {
    "name": "Computer and Electronics",
-   "share": 18.641739
+   "share": 18.737285
   },
   {
    "name": "Internet and Telecom",
-   "share": 17.713924
+   "share": 18.37741
   },
   {
    "name": "Shopping & General Merchandise",
-   "share": 12.024704
+   "share": 13.793301
   },
   {
    "name": "Finance",
-   "share": 10.842016
+   "share": 11.126329
   },
   {
    "name": "News, Media, and Publications",
-   "share": 4.912398
+   "share": 4.799003
   },
   {
    "name": "Gambling",
-   "share": 3.638603
+   "share": 3.850033
   },
   {
    "name": "Business and Industry",
-   "share": 2.421857
+   "share": 2.534598
   },
   {
    "name": "Games",
-   "share": 2.287892
+   "share": 1.810836
   },
   {
    "name": "Travel and Tourism",
-   "share": 1.624883
+   "share": 1.632045
   },
   {
    "name": "Real Estate",
-   "share": 1.362064
+   "share": 1.426034
   },
   {
    "name": "Career and Education",
-   "share": 0.412678
+   "share": 0.475918
   },
   {
    "name": "Law and Government",
-   "share": 0.365563
+   "share": 0.400562
   },
   {
    "name": "People and Society",
-   "share": 0.293189
+   "share": 0.305435
   },
   {
    "name": "Digital Native",
-   "share": 0.287228
+   "share": 0.284233
   },
   {
    "name": "Food and Drink",
-   "share": 0.164333
+   "share": 0.210596
   },
   {
    "name": "Health",
-   "share": 0.157521
+   "share": 0.191112
   },
   {
    "name": "Art, Entertainment & Recreation",
-   "share": 0.118354
+   "share": 0.138105
   },
   {
    "name": "Autos and Vehicles",
-   "share": 0.112961
+   "share": 0.138105
   },
   {
    "name": "Beauty and Fashion",
-   "share": 0.072091
+   "share": 0.077362
   }
  ],
  "industriesL3": [
   {
    "name": "Gambling & Casinos",
-   "share": 78.613299
+   "share": 88.122488
   },
   {
    "name": "Information Technology and Services",
-   "share": 17.17823
+   "share": 8.849747
   },
   {
    "name": "Computer Software",
-   "share": 3.445161
+   "share": 2.051718
   },
   {
    "name": "Telecommunications",
-   "share": 0.26596
+   "share": 0.407472
   },
   {
    "name": "Logistics and Supply Chain",
-   "share": 0.243863
+   "share": 0.277691
   },
   {
    "name": "Media",
-   "share": 0.09789
+   "share": 0.105316
   },
   {
    "name": "Internet",
-   "share": 0.049891
-  },
-  {
-   "name": "Financial Services",
-   "share": 0.033948
+   "share": 0.074474
   },
   {
    "name": "Retail",
-   "share": 0.032908
+   "share": 0.044387
   },
   {
    "name": "Computer & Network Security",
-   "share": 0.027737
+   "share": 0.037051
   },
   {
-   "name": "Broadcast Media",
-   "share": 0.007021
+   "name": "Financial Services",
+   "share": 0.015458
   },
   {
    "name": "Gaming",
-   "share": 0.003426
+   "share": 0.007086
+  },
+  {
+   "name": "Broadcast Media",
+   "share": 0.006213
   },
   {
    "name": "Computer Networking",
-   "share": 0.000425
+   "share": 0.000573
   },
   {
    "name": "IT Services",
-   "share": 0.000236
+   "share": 0.000318
   },
   {
    "name": "Information Services",
-   "share": 0.000005
+   "share": 0.000007
   },
   {
    "name": "Online Media",
@@ -610,52 +624,52 @@
  "verticalsL3": [
   {
    "name": "Gambling",
-   "share": 78.690515
+   "share": 88.215673
   },
   {
    "name": "Internet and Telecom",
-   "share": 17.511263
+   "share": 9.341561
   },
   {
    "name": "Computer and Electronics",
-   "share": 3.476735
+   "share": 2.091552
   },
   {
    "name": "Business and Industry",
-   "share": 0.244103
-  },
-  {
-   "name": "Finance",
-   "share": 0.033981
+   "share": 0.277985
   },
   {
    "name": "Shopping & General Merchandise",
-   "share": 0.032941
+   "share": 0.044434
   },
   {
-   "name": "News, Media, and Publications",
-   "share": 0.007028
+   "name": "Finance",
+   "share": 0.015475
   },
   {
    "name": "Games",
-   "share": 0.00343
+   "share": 0.007093
+  },
+  {
+   "name": "News, Media, and Publications",
+   "share": 0.00622
   },
   {
    "name": "Professional Services",
-   "share": 0.000005
+   "share": 0.000007
   }
  ],
  "meta": {
   "l7": {
    "dateRange": [
     {
-     "startTime": "2026-10-23T11:00:00Z",
-     "endTime": "2026-10-24T11:00:00Z"
+     "startTime": "2026-10-23T14:00:00Z",
+     "endTime": "2026-10-24T14:00:00Z"
     }
    ],
    "confidenceInfo": null,
    "normalization": "PERCENTAGE",
-   "lastUpdated": "2026-10-24T09:30:00Z",
+   "lastUpdated": "2026-10-24T12:30:00Z",
    "units": [
     {
      "name": "*",
@@ -666,13 +680,13 @@
   "l3": {
    "dateRange": [
     {
-     "startTime": "2026-10-23T11:00:00Z",
-     "endTime": "2026-10-24T11:00:00Z"
+     "startTime": "2026-10-23T14:00:00Z",
+     "endTime": "2026-10-24T14:00:00Z"
     }
    ],
    "confidenceInfo": null,
    "normalization": "PERCENTAGE",
-   "lastUpdated": "2026-10-24T09:15:00Z",
+   "lastUpdated": "2026-10-24T12:15:00Z",
    "units": [
     {
      "name": "*",
