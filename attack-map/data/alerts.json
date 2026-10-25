@@ -1,27 +1,27 @@
 {
  "schema": 1,
- "generatedAt": "2026-10-24T23:16:25.634Z",
- "snapshotGeneratedAt": "2026-10-24T23:16:25.337Z",
+ "generatedAt": "2026-10-25T01:17:02.221Z",
+ "snapshotGeneratedAt": "2026-10-25T01:17:01.922Z",
  "target": "JP",
  "dateRange": "1d",
  "status": "info",
  "baseline": {
   "samples": 39,
   "days": 7,
-  "from": "2026-10-18T01:03:59.667Z",
-  "to": "2026-10-24T20:51:28.607Z",
+  "from": "2026-10-18T05:55:09.390Z",
+  "to": "2026-10-24T23:16:25.337Z",
   "sufficient": true
  },
  "alerts": [
   {
-   "id": "l3-single-source:BG:2026-10-24",
+   "id": "l3-single-source:BG:2026-10-25",
    "severity": "info",
    "kind": "l3-single-source",
    "key": "BG",
    "title": "L3 送信元が Bulgaria にほぼ集中",
-   "detail": "94.0%",
-   "value": 94,
-   "baseline": 31.7
+   "detail": "92.4%",
+   "value": 92.4,
+   "baseline": 34
   }
  ]
 }
