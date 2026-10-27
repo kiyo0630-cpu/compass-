@@ -1,16 +1,27 @@
 {
  "schema": 1,
- "generatedAt": "2026-10-26T23:54:35.469Z",
- "snapshotGeneratedAt": "2026-10-26T23:54:35.162Z",
+ "generatedAt": "2026-10-27T05:07:22.550Z",
+ "snapshotGeneratedAt": "2026-10-27T05:07:22.320Z",
  "target": "JP",
  "dateRange": "1d",
- "status": "ok",
+ "status": "warn",
  "baseline": {
   "samples": 39,
   "days": 7,
-  "from": "2026-10-20T00:21:23.231Z",
-  "to": "2026-10-26T19:23:04.989Z",
+  "from": "2026-10-20T06:01:55.679Z",
+  "to": "2026-10-26T23:54:35.162Z",
   "sufficient": true
  },
- "alerts": []
+ "alerts": [
+  {
+   "id": "industry-spike:Computer Software:2026-10-27",
+   "severity": "warn",
+   "kind": "industry-spike",
+   "key": "Computer Software",
+   "title": "被害業種 Computer Software が突発的に増加",
+   "detail": "32.9%（39 回の平均 21.1%）",
+   "value": 32.9,
+   "baseline": 21.1
+  }
+ ]
 }
