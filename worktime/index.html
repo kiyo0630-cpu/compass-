@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a44">
+<title>勤務時間と報酬</title>
+<meta name="description" content="毎日の勤務時間を記録して、月の合計時間と報酬（固定報酬・超過分・消費税）をスマホで確認できるページ。データは端末内に保存されます。">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3f4f8; --surface:#ffffff; --surface-2:#eef0f5;
+  --ink:#1c2130; --ink-2:#5b6478; --ink-3:#8d94a6; --rule:#e1e4ec;
+  --accent:#2f5bd6; --accent-ink:#2449ad; --accent-soft:rgba(47,91,214,.12);
+  --header:#1f2a44; --header-ink:#f3f5fb;
+  --ok:#2e7d4f; --ok-soft:rgba(46,125,79,.13); --warn:#b26a00; --bad:#b4322a; --warn-soft:rgba(178,106,0,.13); --bad-soft:rgba(180,50,42,.12);
+  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --radius:14px;
+  --shadow:0 8px 28px rgba(20,30,60,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111420; --surface:#1a1e2c; --surface-2:#242a3b;
+    --ink:#eceef5; --ink-2:#b2b9cb; --ink-3:#7c8498; --rule:#303748;
+    --accent:#6f8ff0; --accent-ink:#9db2f7; --accent-soft:rgba(111,143,240,.18);
+    --header:#161b2b; --header-ink:#f3f5fb;
+    --ok:#5fbf86; --ok-soft:rgba(95,191,134,.16); --warn:#e0a24a; --bad:#ec7b73; --warn-soft:rgba(224,162,74,.16); --bad-soft:rgba(236,123,115,.16);
+    --shadow:0 8px 28px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111420; --surface:#1a1e2c; --surface-2:#242a3b;
+  --ink:#eceef5; --ink-2:#b2b9cb; --ink-3:#7c8498; --rule:#303748;
+  --accent:#6f8ff0; --accent-ink:#9db2f7; --accent-soft:rgba(111,143,240,.18);
+  --header:#161b2b; --header-ink:#f3f5fb;
+  --ok:#5fbf86; --ok-soft:rgba(95,191,134,.16); --warn:#e0a24a; --bad:#ec7b73; --warn-soft:rgba(224,162,74,.16); --bad-soft:rgba(236,123,115,.16);
+  --shadow:0 8px 28px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;padding:0 16px calc(32px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+header{background:var(--header);color:var(--header-ink);margin:0 -16px 14px;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+header h1{font-size:19px;font-weight:700;letter-spacing:.04em}
+header .today{font-family:var(--mono);font-size:13px;opacity:.8}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.card h2{font-size:13px;font-weight:600;color:var(--ink-2);letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card h2 .sub{font-weight:400;color:var(--ink-3);font-size:12px}
+
+/* 月ナビ */
+.monthnav{display:grid;grid-template-columns:46px 1fr 46px;gap:8px;align-items:center;margin-bottom:12px}
+.monthnav button{min-height:46px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);font-size:18px}
+.monthnav .m{text-align:center}
+.monthnav .m b{display:block;font-size:20px;font-weight:700;letter-spacing:.02em}
+.monthnav .m button{border:0;background:none;min-height:auto;font-size:12px;color:var(--accent-ink);padding:0 6px;text-decoration:underline}
+
+/* 合計 */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hero .box{background:var(--surface-2);border-radius:12px;padding:10px 12px}
+.hero .box>span{display:block;font-size:12px;color:var(--ink-2)}
+.hero .box b{display:block;font-family:var(--mono);font-size:22px;font-weight:600;margin-top:2px}
+.hero .box.main{grid-column:1/-1;background:var(--accent-soft)}
+.hero .box.main b{font-size:34px;color:var(--accent-ink)}
+.hero .box.main small{font-family:var(--sans);font-size:13px;color:var(--ink-2);font-weight:400}
+.prog{margin:12px 0 4px}
+.prog .bar{position:relative;height:12px;border-radius:6px;background:var(--surface-2);overflow:visible}
+.prog .bar>i{display:block;height:100%;border-radius:6px;background:var(--accent);transition:width .3s}
+.prog .bar>i.over{background:var(--ok)}
+.prog .tick{position:absolute;top:-3px;width:2px;height:18px;background:var(--ink-3);border-radius:1px}
+.prog .ticks{position:relative;height:18px;font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.prog .ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.note{font-size:12px;color:var(--ink-3);margin-top:8px;line-height:1.7}
+.status{display:inline-block;border-radius:6px;padding:0 8px;font-size:12px;font-weight:600;line-height:1.8;margin-top:8px}
+.status.ok{background:var(--ok-soft);color:var(--ok)}
+.status.warn{background:var(--warn-soft);color:var(--warn)}
+.status.muted{background:var(--surface-2);color:var(--ink-2)}
+
+/* 報酬内訳 */
+table.pay{width:100%;border-collapse:collapse;font-size:14px}
+table.pay td{padding:7px 0;border-top:1px solid var(--rule);vertical-align:top}
+table.pay tr:first-child td{border-top:0}
+table.pay td.v{text-align:right;font-family:var(--mono);white-space:nowrap}
+table.pay td small{display:block;color:var(--ink-3);font-size:12px;font-family:var(--sans)}
+table.pay tr.sum td{border-top:2px solid var(--ink-2);font-weight:700;font-size:16px}
+table.pay tr.sum td.v{color:var(--accent-ink)}
+table.pay tr.dim td{color:var(--ink-3)}
+
+/* 入力 */
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.row.one{grid-template-columns:1fr}
+label.f,div.f{display:block;font-size:12px;color:var(--ink-2);min-width:0}
+label.f>span,div.f>span{display:block;margin-bottom:3px}
+input,select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:16px;min-height:46px;appearance:none;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.unitwrap{display:grid;grid-template-columns:1fr auto;align-items:stretch}
+.unitwrap input{border-radius:10px 0 0 10px}
+.unitwrap .unit{display:flex;align-items:center;padding:0 12px;background:var(--surface-2);border:1px solid var(--rule);border-left:0;border-radius:0 10px 10px 0;color:var(--ink-2);font-size:14px}
+.unitwrap.pre{grid-template-columns:auto 1fr}
+.unitwrap.pre input{border-radius:0 10px 10px 0}
+.unitwrap.pre .unit{border-left:1px solid var(--rule);border-right:0;border-radius:10px 0 0 10px}
+.sel{position:relative}
+.sel::after{content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--rule);background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--ink-2);min-height:32px;white-space:nowrap;font-family:var(--mono)}
+.chip:active{background:var(--accent-soft)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:46px;padding:10px 16px;border-radius:12px;border:1px solid var(--rule);background:var(--surface-2);font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;width:100%;font-size:16px}
+.btn.ghost{background:transparent;color:var(--ink-2);font-weight:500;min-height:36px;padding:6px 10px}
+.btn.danger{color:var(--bad);border-color:var(--bad-soft);background:var(--bad-soft)}
+.btn:active{transform:translateY(1px)}
+.bkrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bkrow .btn{font-size:14px;padding:8px 10px;min-height:42px}
+.bkrow .wide{grid-column:1/-1}
+.hint{font-size:12px;color:var(--ink-3);line-height:1.6;margin-top:8px}
+
+/* 日別一覧 */
+ul.days{list-style:none}
+ul.days li{border-top:1px solid var(--rule)}
+ul.days li:first-child{border-top:0}
+ul.days button.item{display:grid;grid-template-columns:5.2em 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:9px 0;color:inherit}
+ul.days button.item:active{background:var(--surface-2)}
+ul.days .d{font-family:var(--mono);font-size:14px;color:var(--ink-2)}
+ul.days .d b{font-weight:600;color:var(--ink)}
+ul.days .d .w{font-size:11px;margin-left:4px}
+ul.days li.sat .d .w{color:var(--accent-ink)}
+ul.days li.sun .d .w{color:var(--bad)}
+ul.days .memo{font-size:13px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ul.days .h{font-family:var(--mono);font-size:16px;font-weight:600;white-space:nowrap}
+ul.days li.lump .d b{font-size:12px;font-family:var(--sans);font-weight:600;color:var(--ink-2)}
+ul.days li.lump .h{color:var(--accent-ink)}
+.empty{color:var(--ink-3);font-size:13px;text-align:center;padding:18px 0;line-height:1.8}
+
+/* 年間 */
+table.year{width:100%;border-collapse:collapse;font-size:14px}
+table.year th{font-size:11px;font-weight:600;color:var(--ink-3);text-align:right;padding:0 0 6px;letter-spacing:.04em}
+table.year th:first-child{text-align:left}
+table.year td{padding:6px 0;border-top:1px solid var(--rule);font-family:var(--mono);text-align:right;white-space:nowrap}
+table.year td:first-child{text-align:left;font-family:var(--sans)}
+table.year td:first-child button{background:none;border:0;color:var(--accent-ink);padding:0;text-decoration:underline;font-size:14px}
+table.year tr.cur td{background:var(--accent-soft)}
+table.year tr.dim td{color:var(--ink-3)}
+table.year tr.sum td{border-top:2px solid var(--ink-2);font-weight:700}
+
+/* 設定 */
+.settings .row{margin-bottom:10px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;min-height:46px;background:var(--surface-2);border:1px solid var(--rule);border-radius:10px;font-size:14px;color:var(--ink)}
+.toggle input{width:auto;min-height:auto;appearance:auto;-webkit-appearance:auto;accent-color:var(--accent);width:22px;height:22px}
+
+details summary{cursor:pointer;font-size:13px;color:var(--ink-2);font-weight:600;letter-spacing:.06em;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--ink-3)}
+details[open] summary::before{content:"▾ "}
+details .body{margin-top:10px}
+
+/* 編集シート */
+dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;margin:0;position:fixed;inset:auto 0 0 0;max-height:none;color:inherit}
+dialog::backdrop{background:rgba(10,14,30,.5);backdrop-filter:blur(2px)}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:12px 16px calc(16px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;max-height:92dvh;overflow-y:auto;box-shadow:var(--shadow)}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--rule);margin:0 auto 10px}
+.sheet h2{font-size:17px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.sheet-actions{display:grid;gap:8px;margin-top:4px}
+
+.sitelinks{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--ink-3);padding:6px 2px 0}
+.sitelinks a{color:var(--ink-2);text-decoration:none}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:9;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<header>
+  <h1>⏱ 勤務時間と報酬</h1>
+  <div class="today" id="today"></div>
+</header>
+
+<nav class="monthnav" aria-label="月の切り替え">
+  <button id="prevM" aria-label="前の月">‹</button>
+  <div class="m"><b id="monthLbl"></b><button id="thisM" type="button">今月へ</button></div>
+  <button id="nextM" aria-label="次の月">›</button>
+</nav>
+
+<section class="card" aria-live="polite">
+  <h2>この月の合計 <span class="sub" id="cntLbl"></span></h2>
+  <div class="hero">
+    <div class="box main"><span>勤務時間</span><b><span id="tHours">0</span><small> 時間</small></b></div>
+    <div class="box"><span>報酬（税込）</span><b id="tPay">¥0</b></div>
+    <div class="box"><span id="nextLbl">140時間まで</span><b id="nextVal">—</b></div>
+  </div>
+  <div class="prog" aria-hidden="true">
+    <div class="bar"><i id="progBar"></i><span class="tick" id="tickBase"></span><span class="tick" id="tickOt"></span></div>
+    <div class="ticks"><span id="lblZero" style="left:0;transform:none">0h</span><span id="lblBase"></span><span id="lblOt"></span><span id="lblMax" style="right:0;left:auto;transform:none"></span></div>
+  </div>
+  <div id="statusLine"></div>
+</section>
+
+<section class="card">
+  <h2>報酬の内訳</h2>
+  <table class="pay" id="payTbl"></table>
+  <p class="note" id="payNote"></p>
+</section>
+
+<section class="card" id="entryCard">
+  <h2>今日の勤務時間を記録</h2>
+  <form id="quick" novalidate>
+    <div class="row">
+      <label class="f"><span>日付</span><input id="qDate" type="date" required></label>
+      <label class="f"><span>勤務時間</span>
+        <div class="unitwrap"><input id="qHours" type="number" inputmode="decimal" min="0" max="24" step="0.25" required placeholder="8"><span class="unit">時間</span></div>
+      </label>
+    </div>
+    <div class="chips" id="hourChips" role="group" aria-label="よく使う時間"></div>
+    <div class="row one">
+      <label class="f"><span>メモ（任意）</span><input id="qMemo" type="text" maxlength="60" autocomplete="off" placeholder="例: 休出、早退 など"></label>
+    </div>
+    <button class="btn primary" type="submit" id="qSave">記録する</button>
+    <p class="hint" id="qHint">同じ日付がすでにあるときは上書きします。15分単位（0.25）で入れられます。</p>
+  </form>
+</section>
+
+<section class="card">
+  <h2>日別の記録 <span class="sub" id="daysSub"></span></h2>
+  <ul class="days" id="dayList"></ul>
+</section>
+
+<section class="card">
+  <details id="lumpDetails">
+    <summary>月まとめ入力（合計時間を一度に入れる）</summary>
+    <div class="body">
+      <form id="lumpForm" novalidate>
+        <div class="row">
+          <label class="f"><span><span id="lumpMonthLbl"></span>の合計時間</span>
+            <div class="unitwrap"><input id="lHours" type="number" inputmode="decimal" min="0" max="744" step="0.25" placeholder="190.5"><span class="unit">時間</span></div>
+          </label>
+          <label class="f"><span>メモ（任意）</span><input id="lMemo" type="text" maxlength="60" autocomplete="off" placeholder="例: 月末にまとめて入力"></label>
+        </div>
+        <div class="bkrow">
+          <button class="btn primary" type="submit">保存する</button>
+          <button class="btn danger" type="button" id="lClear">まとめ入力を消す</button>
+        </div>
+      </form>
+      <p class="hint">月末にまとめて合計だけ入れたいときに使います。日別の記録があれば、その合計に<b>足して</b>月の合計になります（日別と二重に入れないよう注意）。</p>
+    </div>
+  </details>
+</section>
+
+<section class="card">
+  <h2>年間の見通し <span class="sub" id="yearLbl"></span></h2>
+  <table class="year" id="yearTbl"></table>
+</section>
+
+<section class="card settings">
+  <details id="setDetails">
+    <summary>報酬のルール（設定）</summary>
+    <div class="body">
+      <form id="setForm" novalidate>
+        <div class="row">
+          <label class="f"><span>固定報酬が出る時間（以上）</span>
+            <div class="unitwrap"><input id="sBase" type="number" inputmode="decimal" min="0" step="0.5"><span class="unit">時間</span></div></label>
+          <label class="f"><span>固定報酬</span>
+            <div class="unitwrap pre"><span class="unit">¥</span><input id="sBaseAmt" type="number" inputmode="numeric" min="0" step="1"></div></label>
+        </div>
+        <div class="row">
+          <label class="f"><span>超過単価がつく時間（超えた分）</span>
+            <div class="unitwrap"><input id="sOt" type="number" inputmode="decimal" min="0" step="0.5"><span class="unit">時間</span></div></label>
+          <label class="f"><span>超過1時間あたり</span>
+            <div class="unitwrap pre"><span class="unit">¥</span><input id="sRate" type="number" inputmode="numeric" min="0" step="1"></div></label>
+        </div>
+        <div class="row">
+          <label class="f"><span>消費税率</span>
+            <div class="unitwrap"><input id="sTax" type="number" inputmode="decimal" min="0" max="100" step="0.1"><span class="unit">%</span></div></label>
+          <label class="f"><span>消費税をかける範囲</span>
+            <div class="sel"><select id="sTaxOn">
+              <option value="ot">超過分（3,000円×時間）のみ</option>
+              <option value="all">固定報酬＋超過分の全額</option>
+            </select></div></label>
+        </div>
+        <button class="btn primary" type="submit">設定を保存</button>
+        <p class="hint">初期値: 140時間以上で 60万円、180時間を超えた分は 1時間 3,000円、超過分に消費税 10%。「140時間を超えたら」を「140時間ちょうど」から出るものとして扱っています。違う場合は上の値を変えてください。</p>
+      </form>
+    </div>
+  </details>
+</section>
+
+<section class="card">
+  <details>
+    <summary>データの書き出し・読み込み</summary>
+    <div class="body">
+      <div class="bkrow">
+        <button class="btn" id="exportBtn">書き出す（JSON）</button>
+        <button class="btn" id="importBtn">読み込む</button>
+        <button class="btn" id="csvBtn">CSVで書き出す</button>
+        <button class="btn danger" id="resetBtn">すべて消去</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+      <p class="hint">データはこの端末のブラウザにだけ保存されます。別の端末で見たいときや機種変更のときは「書き出す」でファイルを保存し、移行先で「読み込む」でください。読み込みは同じ日付を上書きし、ほかは追記します。消去は元に戻せません。</p>
+    </div>
+  </details>
+</section>
+
+<nav class="sitelinks" aria-label="ほかのページ">
+  <a href="../">📓 コンパス手帳</a>
+  <a href="../subscriptions/">💳 サブスク管理</a>
+  <a href="../caffeine/">☕ カフェイン時計</a>
+  <a href="../attack-map/">🌐 攻撃マップ</a>
+</nav>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form class="sheet" id="editForm" method="dialog" novalidate>
+    <div class="grab" aria-hidden="true"></div>
+    <h2><span id="dlgTitle">記録を編集</span><button type="button" class="btn ghost" id="closeBtn" aria-label="閉じる">✕</button></h2>
+    <input type="hidden" id="eOrig">
+    <div class="row">
+      <label class="f"><span>日付</span><input id="eDate" type="date" required></label>
+      <label class="f"><span>勤務時間</span>
+        <div class="unitwrap"><input id="eHours" type="number" inputmode="decimal" min="0" max="24" step="0.25" required><span class="unit">時間</span></div>
+      </label>
+    </div>
+    <div class="row one">
+      <label class="f"><span>メモ（任意）</span><input id="eMemo" type="text" maxlength="60" autocomplete="off"></label>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn primary" type="submit">保存する</button>
+      <button class="btn danger" type="button" id="eDelete">この記録を削除</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* ═══════════════ ユーティリティ ═══════════════ */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const ym=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const WD=['日','月','火','水','木','金','土'];
+const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+const hrs=n=>{const r=Math.round(n*100)/100;return Number.isInteger(r)?String(r):String(r).replace(/0+$/,'');};
+const monthLabel=k=>{const [y,m]=k.split('-');return `${y}年${Number(m)}月`;};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* ═══════════════ 保存 ═══════════════ */
+const STORE='worktime.v1';
+const DEFAULT_SETTINGS={base:140,baseAmount:600000,otFrom:180,otRate:3000,taxRate:10,taxOn:'ot'};
+// 初回だけ入る初期データ。2026年10月は月末前にまとめて 190.5 時間。
+const SEED={monthly:{'2026-10':{hours:190.5,memo:'月末にまとめて入力'}}};
+let state=load();
+function load(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(STORE));
+    if(raw&&typeof raw==='object'){
+      return {
+        settings:{...DEFAULT_SETTINGS,...(raw.settings||{})},
+        entries:Array.isArray(raw.entries)?raw.entries.filter(e=>e&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)&&Number.isFinite(+e.hours)):[],
+        monthly:(raw.monthly&&typeof raw.monthly==='object')?raw.monthly:{},
+      };
+    }
+  }catch(e){}
+  return {settings:{...DEFAULT_SETTINGS},entries:[],monthly:JSON.parse(JSON.stringify(SEED.monthly))};
+}
+function save(){
+  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){toast('保存できませんでした（容量不足？）');}
+}
+
+/* ═══════════════ 計算 ═══════════════ */
+function entriesOf(key){return state.entries.filter(e=>e.date.startsWith(key+'-')).sort((a,b)=>a.date<b.date?-1:1);}
+function hoursOf(key){
+  const daily=entriesOf(key).reduce((s,e)=>s+(+e.hours||0),0);
+  const lump=+(state.monthly[key]?.hours)||0;
+  return {daily,lump,total:Math.round((daily+lump)*100)/100};
+}
+function calcPay(h,s=state.settings){
+  const reached=h>=s.base&&h>0;
+  const fixed=reached?s.baseAmount:0;
+  const otHours=Math.max(0,Math.round((h-s.otFrom)*100)/100);
+  const ot=otHours*s.otRate;
+  const taxBase=s.taxOn==='all'?fixed+ot:ot;
+  const tax=Math.round(taxBase*s.taxRate/100);
+  return {reached,fixed,otHours,ot,tax,subtotal:fixed+ot,total:fixed+ot+tax};
+}
+
+/* ═══════════════ 表示 ═══════════════ */
+let cur=ym(new Date());
+function render(){
+  const s=state.settings, h=hoursOf(cur), p=calcPay(h.total);
+  $('#monthLbl').textContent=monthLabel(cur);
+  $('#lumpMonthLbl').textContent=monthLabel(cur);
+  const n=entriesOf(cur).length;
+  $('#cntLbl').textContent=n?`日別 ${n} 日分${h.lump?' ＋ まとめ入力':''}`:(h.lump?'まとめ入力':'');
+  $('#tHours').textContent=hrs(h.total);
+  $('#tPay').textContent=yen(p.total);
+
+  // 次の目標
+  if(h.total<s.base){$('#nextLbl').textContent=`${hrs(s.base)}時間まで`;$('#nextVal').textContent=`あと ${hrs(s.base-h.total)}h`;}
+  else if(h.total<=s.otFrom){$('#nextLbl').textContent=`${hrs(s.otFrom)}時間まで`;$('#nextVal').textContent=h.total===s.otFrom?'到達':`あと ${hrs(s.otFrom-h.total)}h`;}
+  else{$('#nextLbl').textContent=`${hrs(s.otFrom)}時間からの超過`;$('#nextVal').textContent=`+${hrs(p.otHours)}h`;}
+
+  // 進捗バー（上限は 180h の 1.2 倍か実績の大きい方）
+  const max=Math.max(s.otFrom*1.2,h.total*1.05,1);
+  const pct=v=>Math.min(100,v/max*100);
+  const bar=$('#progBar');bar.style.width=pct(h.total)+'%';bar.classList.toggle('over',h.total>s.otFrom);
+  $('#tickBase').style.left=pct(s.base)+'%';$('#tickOt').style.left=pct(s.otFrom)+'%';
+  $('#lblBase').style.left=pct(s.base)+'%';$('#lblBase').textContent=hrs(s.base)+'h';
+  $('#lblOt').style.left=pct(s.otFrom)+'%';$('#lblOt').textContent=hrs(s.otFrom)+'h';
+  $('#lblMax').textContent=hrs(Math.round(max))+'h';
+
+  const st=$('#statusLine');
+  if(h.total===0) st.innerHTML='<span class="status muted">まだ記録がありません</span>';
+  else if(!p.reached) st.innerHTML=`<span class="status warn">${hrs(s.base)}時間未満 — 固定報酬の条件にまだ届いていません</span>`;
+  else if(p.otHours>0) st.innerHTML=`<span class="status ok">${hrs(s.otFrom)}時間を ${hrs(p.otHours)} 時間超過 — 超過分が加算されます</span>`;
+  else st.innerHTML=`<span class="status ok">固定報酬 ${yen(s.baseAmount)} の範囲内（${hrs(s.base)}〜${hrs(s.otFrom)}時間）</span>`;
+
+  // 内訳
+  const rows=[];
+  rows.push(`<tr class="${p.reached?'':'dim'}"><td>固定報酬<small>${hrs(s.base)}時間以上で ${yen(s.baseAmount)}${p.reached?'':'（未達）'}</small></td><td class="v">${yen(p.fixed)}</td></tr>`);
+  rows.push(`<tr class="${p.otHours>0?'':'dim'}"><td>超過分<small>${hrs(s.otFrom)}時間を超えた ${hrs(p.otHours)} 時間 × ${yen(s.otRate)}</small></td><td class="v">${yen(p.ot)}</td></tr>`);
+  rows.push(`<tr class="${p.tax>0?'':'dim'}"><td>消費税 ${hrs(s.taxRate)}%<small>${s.taxOn==='all'?'固定報酬＋超過分':'超過分'}にかけた金額</small></td><td class="v">${yen(p.tax)}</td></tr>`);
+  rows.push(`<tr class="sum"><td>合計（税込）</td><td class="v">${yen(p.total)}</td></tr>`);
+  $('#payTbl').innerHTML=rows.join('');
+  $('#payNote').textContent=`税抜 ${yen(p.subtotal)} ＋ 消費税 ${yen(p.tax)}。${s.taxOn==='all'?'消費税は全額にかけています。':'消費税は超過分にだけかけています。固定報酬にもかかる場合は設定で「全額」に変えてください。'}`;
+
+  // 日別一覧
+  const list=entriesOf(cur);
+  const days=$('#dayList');
+  const items=[];
+  if(h.lump){
+    const m=state.monthly[cur];
+    items.push(`<li class="lump"><button class="item" type="button" data-lump="1"><span class="d"><b>まとめ入力</b></span><span class="memo">${esc(m.memo||'')}</span><span class="h">${hrs(m.hours)}h</span></button></li>`);
+  }
+  for(const e of [...list].reverse()){
+    const d=new Date(e.date+'T00:00:00');const w=d.getDay();
+    items.push(`<li class="${w===0?'sun':w===6?'sat':''}"><button class="item" type="button" data-date="${e.date}"><span class="d"><b>${d.getDate()}日</b><span class="w">${WD[w]}</span></span><span class="memo">${esc(e.memo||'')}</span><span class="h">${hrs(e.hours)}h</span></button></li>`);
+  }
+  days.innerHTML=items.length?items.join(''):'<li class="empty">この月の記録はまだありません。<br>上のフォームから今日の時間を入れてください。</li>';
+  $('#daysSub').textContent=list.length?`日別 ${hrs(h.daily)}h${h.lump?` ＋ まとめ ${hrs(h.lump)}h`:''}`:'';
+
+  // まとめ入力フォーム
+  const m=state.monthly[cur];
+  $('#lHours').value=m?hrs(m.hours):'';$('#lMemo').value=m?.memo||'';
+  if(m&&!$('#lumpDetails').open&&list.length===0) $('#lumpDetails').open=true;
+
+  // 年間
+  renderYear();
+
+  // 入力フォームの日付をこの月に合わせる
+  const today=ymd(new Date());
+  const qd=$('#qDate');
+  if(!qd.value||!qd.value.startsWith(cur+'-')) qd.value=today.startsWith(cur+'-')?today:cur+'-01';
+  $('#entryCard h2').textContent=qd.value===today?'今日の勤務時間を記録':'勤務時間を記録';
+}
+function renderYear(){
+  const year=cur.slice(0,4);
+  $('#yearLbl').textContent=`${year}年`;
+  const rows=[`<tr><th>月</th><th>時間</th><th>超過</th><th>報酬（税込）</th></tr>`];
+  let sumH=0,sumP=0,any=false;
+  for(let i=1;i<=12;i++){
+    const k=`${year}-${pad(i)}`;const h=hoursOf(k);const p=calcPay(h.total);
+    sumH+=h.total;sumP+=p.total;if(h.total>0)any=true;
+    rows.push(`<tr class="${k===cur?'cur':''} ${h.total?'':'dim'}"><td><button type="button" data-month="${k}">${i}月</button></td><td>${h.total?hrs(h.total)+'h':'—'}</td><td>${p.otHours?'+'+hrs(p.otHours)+'h':'—'}</td><td>${h.total?yen(p.total):'—'}</td></tr>`);
+  }
+  rows.push(`<tr class="sum"><td>合計</td><td>${any?hrs(sumH)+'h':'—'}</td><td></td><td>${any?yen(sumP):'—'}</td></tr>`);
+  $('#yearTbl').innerHTML=rows.join('');
+}
+
+/* ═══════════════ 操作 ═══════════════ */
+function shiftMonth(n){const [y,m]=cur.split('-').map(Number);const d=new Date(y,m-1+n,1);cur=ym(d);$('#qDate').value='';render();}
+$('#prevM').onclick=()=>shiftMonth(-1);
+$('#nextM').onclick=()=>shiftMonth(1);
+$('#thisM').onclick=()=>{cur=ym(new Date());$('#qDate').value='';render();};
+$('#yearTbl').addEventListener('click',e=>{const b=e.target.closest('button[data-month]');if(b){cur=b.dataset.month;$('#qDate').value='';render();}});
+
+function upsert(date,hours,memo){
+  const i=state.entries.findIndex(e=>e.date===date);
+  const rec={date,hours,memo:(memo||'').trim()};
+  const existed=i>=0;
+  if(existed) state.entries[i]=rec; else state.entries.push(rec);
+  save();return existed;
+}
+// よく使う時間のチップ
+const PRESETS=[6,7,7.5,8,8.5,9,9.5,10,11,12];
+$('#hourChips').innerHTML=PRESETS.map(v=>`<button class="chip" type="button" data-h="${v}">${hrs(v)}h</button>`).join('');
+$('#hourChips').addEventListener('click',e=>{const b=e.target.closest('button[data-h]');if(b){$('#qHours').value=b.dataset.h;$('#qHours').focus();}});
+$('#qDate').addEventListener('change',()=>{
+  const v=$('#qDate').value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){const k=v.slice(0,7);if(k!==cur){cur=k;render();}
+    const ex=state.entries.find(e=>e.date===v);$('#qHint').textContent=ex?`${v.slice(5).replace('-','/')} はすでに ${hrs(ex.hours)}h の記録があります。保存すると上書きします。`:'同じ日付がすでにあるときは上書きします。15分単位（0.25）で入れられます。';}
+});
+$('#quick').addEventListener('submit',e=>{
+  e.preventDefault();
+  const date=$('#qDate').value, h=parseFloat($('#qHours').value);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('日付を入れてください');$('#qDate').focus();return;}
+  if(!Number.isFinite(h)||h<0||h>24){toast('勤務時間は 0〜24 の数で入れてください');$('#qHours').focus();return;}
+  const existed=upsert(date,h,$('#qMemo').value);
+  cur=date.slice(0,7);
+  $('#qHours').value='';$('#qMemo').value='';
+  render();
+  toast(existed?`${date.slice(5).replace('-','/')} を ${hrs(h)}h に更新しました`:`${date.slice(5).replace('-','/')} に ${hrs(h)}h を記録しました`);
+});
+
+// まとめ入力
+$('#lumpForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=$('#lHours').value.trim();
+  if(v===''){delete state.monthly[cur];save();render();toast('まとめ入力を消しました');return;}
+  const h=parseFloat(v);
+  if(!Number.isFinite(h)||h<0||h>744){toast('合計時間は 0〜744 の数で入れてください');return;}
+  state.monthly[cur]={hours:h,memo:$('#lMemo').value.trim()};
+  save();render();toast(`${monthLabel(cur)} の合計を ${hrs(h)}h で保存しました`);
+});
+$('#lClear').onclick=()=>{
+  if(!state.monthly[cur]){toast('まとめ入力はありません');return;}
+  if(!confirm(`${monthLabel(cur)} のまとめ入力を消しますか？`))return;
+  delete state.monthly[cur];save();render();toast('まとめ入力を消しました');
+};
+
+// 編集シート
+const dlg=$('#dlg');
+$('#dayList').addEventListener('click',e=>{
+  const b=e.target.closest('button.item');if(!b)return;
+  if(b.dataset.lump){$('#lumpDetails').open=true;$('#lHours').focus();$('#lumpDetails').scrollIntoView({behavior:'smooth',block:'center'});return;}
+  const rec=state.entries.find(x=>x.date===b.dataset.date);if(!rec)return;
+  $('#eOrig').value=rec.date;$('#eDate').value=rec.date;$('#eHours').value=hrs(rec.hours);$('#eMemo').value=rec.memo||'';
+  dlg.showModal();
+});
+$('#closeBtn').onclick=()=>dlg.close();
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close();});
+$('#editForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const orig=$('#eOrig').value, date=$('#eDate').value, h=parseFloat($('#eHours').value);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('日付を入れてください');return;}
+  if(!Number.isFinite(h)||h<0||h>24){toast('勤務時間は 0〜24 の数で入れてください');return;}
+  if(date!==orig) state.entries=state.entries.filter(x=>x.date!==orig);
+  upsert(date,h,$('#eMemo').value);
+  cur=date.slice(0,7);dlg.close();render();toast('保存しました');
+});
+$('#eDelete').onclick=()=>{
+  const orig=$('#eOrig').value;
+  if(!confirm(`${orig.replace(/-/g,'/')} の記録を削除しますか？`))return;
+  state.entries=state.entries.filter(x=>x.date!==orig);save();dlg.close();render();toast('削除しました');
+};
+
+// 設定
+function fillSettings(){const s=state.settings;$('#sBase').value=s.base;$('#sBaseAmt').value=s.baseAmount;$('#sOt').value=s.otFrom;$('#sRate').value=s.otRate;$('#sTax').value=s.taxRate;$('#sTaxOn').value=s.taxOn;}
+$('#setForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const num=(id,min,max)=>{const v=parseFloat($(id).value);return Number.isFinite(v)&&v>=min&&v<=max?v:null;};
+  const s={base:num('#sBase',0,744),baseAmount:num('#sBaseAmt',0,1e9),otFrom:num('#sOt',0,744),otRate:num('#sRate',0,1e7),taxRate:num('#sTax',0,100),taxOn:$('#sTaxOn').value==='all'?'all':'ot'};
+  if(Object.values(s).some(v=>v===null)){toast('数字を確認してください');return;}
+  if(s.otFrom<s.base){toast('超過の時間は固定報酬の時間以上にしてください');return;}
+  state.settings=s;save();render();toast('設定を保存しました');
+});
+
+// 書き出し・読み込み
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+$('#exportBtn').onclick=()=>{download(`worktime-${ymd(new Date())}.json`,JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2),'application/json');toast('書き出しました');};
+$('#csvBtn').onclick=()=>{
+  const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const lines=['年月,日付,種別,時間,メモ,月合計時間,月報酬(税込)'];
+  const keys=new Set([...state.entries.map(e=>e.date.slice(0,7)),...Object.keys(state.monthly)]);
+  for(const k of [...keys].sort()){
+    const h=hoursOf(k),p=calcPay(h.total);
+    for(const e of entriesOf(k)) lines.push([k,e.date,'日別',hrs(e.hours),q(e.memo),hrs(h.total),p.total].join(','));
+    if(state.monthly[k]) lines.push([k,'','月まとめ',hrs(state.monthly[k].hours),q(state.monthly[k].memo),hrs(h.total),p.total].join(','));
+  }
+  download(`worktime-${ymd(new Date())}.csv`,'﻿'+lines.join('\r\n'),'text/csv');toast('CSV を書き出しました');
+};
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const raw=JSON.parse(await f.text());
+    let n=0;
+    if(Array.isArray(raw.entries)) for(const r of raw.entries){if(r&&/^\d{4}-\d{2}-\d{2}$/.test(r.date)&&Number.isFinite(+r.hours)){upsert(r.date,+r.hours,r.memo);n++;}}
+    if(raw.monthly&&typeof raw.monthly==='object') for(const [k,v] of Object.entries(raw.monthly)){if(/^\d{4}-\d{2}$/.test(k)&&v&&Number.isFinite(+v.hours)){state.monthly[k]={hours:+v.hours,memo:String(v.memo||'')};n++;}}
+    if(raw.settings&&typeof raw.settings==='object') state.settings={...DEFAULT_SETTINGS,...raw.settings};
+    save();fillSettings();render();toast(`${n} 件を読み込みました`);
+  }catch(err){toast('読み込めませんでした（JSON の形式を確認）');}
+  e.target.value='';
+});
+$('#resetBtn').onclick=()=>{
+  if(!confirm('すべての記録と設定を消しますか？ 元に戻せません。'))return;
+  state={settings:{...DEFAULT_SETTINGS},entries:[],monthly:{}};
+  save();fillSettings();render();toast('消去しました');
+};
+
+/* ═══════════════ 起動 ═══════════════ */
+(function init(){
+  const d=new Date();
+  $('#today').textContent=`${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}（${WD[d.getDay()]}）`;
+  $('#qDate').value=ymd(d);
+  fillSettings();
+  render();
+})();
+</script>
+</body>
+</html>
