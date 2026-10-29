@@ -13,6 +13,7 @@ GitHub Pages で公開している個人用 Web ページ群と、その生成�
 | `caffeine/` | **カフェイン時計** — 体内カフェイン量の時間推移 | 単一 HTML |
 | `subscriptions/` | **サブスク管理** — 契約中のサブスクを登録し、月額・年額換算と今後30日の支払いをスマホで確認。データは端末内（localStorage）に保存し、JSON/CSV で書き出せる | 単一 HTML |
 | `worktime/` | **勤務時間と報酬** — 毎日の勤務時間（または月のまとめ時間）を記録し、月合計と報酬（140時間以上で固定報酬、180時間超は時間単価、全額に消費税）を自動計算。ルールは設定で変更でき、データは端末内（localStorage）に保存し、JSON/CSV で書き出せる | 単一 HTML |
+| `highlow/` | **FX 10秒 HIGH&LOW** — 為替レートが10秒後に上がるか下がるかを当てるスマホ向けゲーム。購入金額（¥1,000〜¥50,000）やペイアウト率（1.88倍など）は実際のバイナリーオプションに合わせた仮想資金のデモ口座。レートは無料APIの実勢値を起点にした模擬配信で、残高・履歴は端末内（localStorage）に保存 | 単一 HTML |
 | `e-card-src/` → `e-card/` | **Eカード 極限心理戦** — カイジの E カード対 CPU。`e-card-src/` がソース、`e-card/` がビルド成果物。詳細は [e-card-src/README.md](e-card-src/README.md) | React + Vite + Tailwind |
 | `keiba/` | **競馬予想シミュレーター** — TARGET frontier JV データで市場確率の校正と特徴量検証。詳細は [keiba/README.md](keiba/README.md) | Python（numpy / pandas） |
 
@@ -43,6 +44,7 @@ python3 -m http.server 8000
 # http://localhost:8000/attack-map/ 攻撃マップ（data/latest.json があればそれを読む）
 # http://localhost:8000/subscriptions/ サブスク管理
 # http://localhost:8000/worktime/      勤務時間と報酬
+# http://localhost:8000/highlow/       FX 10秒 HIGH&LOW
 ```
 
 ## テストと Lint

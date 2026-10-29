@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b0f1a">
+<title>FX 10秒 HIGH&LOW</title>
+<meta name="description" content="為替レートが10秒後に上がるか下がるかを当てるHIGH&LOWゲーム。実際のバイナリーオプションと同じ購入金額・ペイアウト率で遊べるデモ口座（仮想資金）です。">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b0f1a; --surface:#131a29; --surface-2:#1b2435; --surface-3:#243049;
+  --ink:#eef1f8; --ink-2:#aab3c7; --ink-3:#6f7a93; --rule:#273146;
+  --hi:#18c37a; --hi-deep:#0e9a5e; --hi-soft:rgba(24,195,122,.16);
+  --lo:#ff4d5e; --lo-deep:#d6303f; --lo-soft:rgba(255,77,94,.16);
+  --gold:#f5c04a; --gold-soft:rgba(245,192,74,.16);
+  --accent:#5b8cff; --accent-soft:rgba(91,140,255,.16);
+  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --radius:16px;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;max-width:560px;margin:0 auto;padding:0 16px calc(24px + env(safe-area-inset-bottom));min-height:100%;overscroll-behavior-y:none}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(12px + env(safe-area-inset-top)) 0 10px}
+header h1{font-size:15px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
+.demo{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--gold);background:var(--gold-soft);border:1px solid rgba(245,192,74,.4);border-radius:6px;padding:1px 6px}
+.wallet{text-align:right;line-height:1.2}
+.wallet span{display:block;font-size:10px;color:var(--ink-3);letter-spacing:.06em}
+.wallet b{font-size:17px;font-weight:600;white-space:nowrap}
+.iconbtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;font-size:17px;color:var(--ink-2);flex:0 0 auto}
+
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+
+/* 通貨ペア */
+.pairs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;-webkit-overflow-scrolling:touch}
+.pairs::-webkit-scrollbar{display:none}
+.pair{flex:0 0 auto;border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--ink-2);min-height:34px;white-space:nowrap}
+.pair[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:#fff}
+
+/* レート */
+.quote{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:6px}
+.quote .big{font-size:38px;font-weight:600;line-height:1;letter-spacing:-.02em;transition:color .15s}
+.quote .big.up{color:var(--hi)} .quote .big.dn{color:var(--lo)}
+.quote .big small{font-size:22px;color:inherit;opacity:.7}
+.quote .meta{text-align:right;font-size:11px;color:var(--ink-3);line-height:1.5}
+.quote .meta b{display:block;font-size:13px;color:var(--ink-2)}
+.chartwrap{position:relative;height:190px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#0f1524,#0b0f1a)}
+canvas{display:block;width:100%;height:100%}
+.ring{position:absolute;right:10px;top:10px;width:64px;height:64px;display:none}
+.ring.on{display:block}
+.ring svg{width:64px;height:64px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:5}
+.ring .bgc{stroke:rgba(255,255,255,.12)}
+.ring .fgc{stroke:var(--gold);stroke-linecap:round;transition:stroke-dashoffset .1s linear}
+.ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff}
+.live{position:absolute;left:10px;top:10px;display:none;flex-direction:column;gap:4px}
+.live.on{display:flex}
+.tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;letter-spacing:.04em;width:max-content}
+.tag.hi{background:var(--hi-soft);color:var(--hi)} .tag.lo{background:var(--lo-soft);color:var(--lo)}
+.tag.win{background:var(--hi);color:#042b1a} .tag.lose{background:var(--lo);color:#3b0710} .tag.flat{background:var(--surface-3);color:var(--ink-2)}
+.tag.entry{background:rgba(255,255,255,.1);color:var(--ink-2)}
+
+/* 金額 */
+.sec{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--ink-3);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.sec .r{font-weight:500;letter-spacing:0}
+.amts{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
+.amt{border:1px solid var(--rule);background:var(--surface-2);border-radius:10px;min-height:42px;font-size:13px;font-weight:600;color:var(--ink-2);padding:4px 2px;line-height:1.15}
+.amt small{display:block;font-size:9px;font-weight:500;color:var(--ink-3)}
+.amt[aria-pressed="true"]{background:var(--gold-soft);border-color:var(--gold);color:#fff}
+.amt[aria-pressed="true"] small{color:var(--gold)}
+.custom{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:stretch}
+.custom .unit{display:flex;align-items:center;padding:0 10px;color:var(--ink-3);font-size:14px}
+.custom input{width:100%;background:var(--surface-2);border:1px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:18px;min-height:44px;text-align:right;appearance:none;-webkit-appearance:none}
+.custom input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.step{width:44px;border-radius:10px;border:1px solid var(--rule);background:var(--surface-2);font-size:18px;color:var(--ink-2)}
+.payrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.pay{background:var(--surface-2);border-radius:10px;padding:7px 10px;line-height:1.25}
+.pay span{display:block;font-size:10px;color:var(--ink-3)}
+.pay b{font-size:16px;font-weight:600}
+.pay.win b{color:var(--hi)} .pay.lose b{color:var(--lo)}
+
+/* HIGH / LOW */
+.hl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 10px}
+.hlbtn{border:0;border-radius:18px;min-height:88px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;overflow:hidden;box-shadow:var(--shadow);transition:transform .08s,filter .2s}
+.hlbtn b{font-size:26px;font-weight:800;letter-spacing:.06em;line-height:1.1}
+.hlbtn span{font-size:12px;opacity:.85}
+.hlbtn.hi{background:linear-gradient(160deg,#20d888,var(--hi-deep))}
+.hlbtn.lo{background:linear-gradient(160deg,#ff6372,var(--lo-deep))}
+.hlbtn:active{transform:scale(.97)}
+.hlbtn:disabled{filter:grayscale(.55) brightness(.6);transform:none;box-shadow:none}
+.note{font-size:11px;color:var(--ink-3);text-align:center;line-height:1.6}
+
+/* 統計・履歴 */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stat{background:var(--surface-2);border-radius:10px;padding:8px 10px;line-height:1.25}
+.stat span{display:block;font-size:10px;color:var(--ink-3)}
+.stat b{font-size:17px;font-weight:600}
+.pos{color:var(--hi)} .neg{color:var(--lo)}
+ul.hist{list-style:none}
+ul.hist li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--rule)}
+ul.hist li:first-child{border-top:0}
+ul.hist .t{font-size:11px;color:var(--ink-3);line-height:1.3}
+ul.hist .t b{display:block;font-size:12px;color:var(--ink-2)}
+ul.hist .d{font-size:12px;color:var(--ink-2);line-height:1.35;min-width:0}
+ul.hist .d .tag{display:inline-block;margin-right:6px;vertical-align:middle}
+ul.hist .p{text-align:right;font-size:15px;font-weight:600;white-space:nowrap}
+ul.hist .p small{display:block;font-size:10px;font-weight:500;color:var(--ink-3)}
+.empty{color:var(--ink-3);font-size:13px;text-align:center;padding:16px 0;line-height:1.8}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:12px;border:1px solid var(--rule);background:var(--surface-2);font-weight:600;font-size:14px}
+.btn.ghost{background:transparent;color:var(--ink-2);font-weight:500;min-height:34px;padding:4px 10px;font-size:12px}
+.btn.danger{color:var(--lo);border-color:rgba(255,77,94,.35);background:var(--lo-soft)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#2a1d00}
+.btn:active{transform:translateY(1px)}
+
+/* 結果オーバーレイ */
+.result{position:fixed;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:20}
+.result.on{display:flex;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+.result .box{background:rgba(11,15,26,.92);border:1px solid var(--rule);border-radius:22px;padding:22px 30px;text-align:center;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+.result .box h3{font-size:34px;font-weight:900;letter-spacing:.1em;line-height:1}
+.result .box p{margin-top:6px;font-size:24px;font-weight:700}
+.result .box small{display:block;margin-top:4px;font-size:12px;color:var(--ink-3)}
+.result.win h3,.result.win p{color:var(--hi)} .result.lose h3,.result.lose p{color:var(--lo)} .result.flat h3,.result.flat p{color:var(--ink-2)}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* 設定シート */
+dialog{border:0;padding:0;background:transparent;max-width:none;width:100%;margin:0;position:fixed;inset:auto 0 0 0;max-height:none;color:inherit}
+dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:12px 16px calc(16px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;max-height:92dvh;overflow-y:auto;box-shadow:var(--shadow)}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--rule);margin:0 auto 10px}
+.sheet h2{font-size:17px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.row.one{grid-template-columns:1fr}
+.row.three{grid-template-columns:1fr 1fr 1fr}
+label.f{display:block;font-size:12px;color:var(--ink-2)}
+label.f>span{display:block;margin-bottom:3px}
+select,.sheet input{width:100%;background:var(--surface-2);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:16px;min-height:46px;appearance:none;-webkit-appearance:none}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;min-height:46px;background:var(--surface-2);border:1px solid var(--rule);border-radius:10px;font-size:14px}
+.toggle input{width:22px;height:22px;min-height:auto;appearance:auto;-webkit-appearance:auto;accent-color:var(--accent)}
+.sheet p.help{font-size:12px;color:var(--ink-3);line-height:1.7;margin:4px 0 12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#f0f2f8;color:#111;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:.25s;z-index:30;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media (max-width:360px){.quote .big{font-size:32px}.hlbtn b{font-size:22px}.amts{grid-template-columns:repeat(5,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FX 10秒 HIGH&amp;LOW <span class="demo">DEMO</span></h1>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="wallet"><span>残高</span><b class="num" id="balance">¥0</b></div>
+    <button class="iconbtn" id="btnSettings" aria-label="設定">⚙</button>
+  </div>
+</header>
+
+<div class="pairs" id="pairs" role="group" aria-label="通貨ペア"></div>
+
+<section class="card">
+  <div class="quote">
+    <div class="big num" id="price">---.---</div>
+    <div class="meta"><b id="pairName">USD/JPY</b><span id="feedNote">レート取得中…</span></div>
+  </div>
+  <div class="chartwrap">
+    <canvas id="chart" aria-label="直近60秒のレート推移"></canvas>
+    <div class="live" id="live">
+      <span class="tag entry" id="entryTag">ENTRY ---</span>
+      <span class="tag flat" id="plTag">判定待ち</span>
+    </div>
+    <div class="ring" id="ring"><svg viewBox="0 0 64 64"><circle class="bgc" cx="32" cy="32" r="28"/><circle class="fgc" id="ringFg" cx="32" cy="32" r="28" stroke-dasharray="175.9" stroke-dashoffset="0"/></svg><b id="ringNum">10</b></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="sec"><span>購入金額</span><span class="r num" id="limits">¥1,000 〜 ¥50,000</span></div>
+  <div class="amts" id="amts"></div>
+  <div class="custom">
+    <span class="unit">¥</span>
+    <input id="amtInput" class="num" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1000" aria-label="購入金額">
+    <button class="step" id="amtMinus" aria-label="1,000円減らす">−</button>
+    <button class="step" id="amtPlus" aria-label="1,000円増やす">＋</button>
+  </div>
+  <div class="payrow">
+    <div class="pay"><span>ペイアウト率</span><b class="num" id="payRate">1.88倍</b></div>
+    <div class="pay win"><span>的中時の利益</span><b class="num" id="payWin">+¥880</b></div>
+    <div class="pay lose"><span>外れた時</span><b class="num" id="payLose">−¥1,000</b></div>
+  </div>
+</section>
+
+<div class="hl">
+  <button class="hlbtn hi" id="btnHigh"><b>▲ HIGH</b><span>10秒後に上がる</span></button>
+  <button class="hlbtn lo" id="btnLow"><b>▼ LOW</b><span>10秒後に下がる</span></button>
+</div>
+<p class="note" id="hlNote">購入と同時に判定開始。10秒後のレートで自動判定します。</p>
+
+<section class="card" style="margin-top:10px">
+  <div class="sec"><span>本日の成績</span><button class="btn ghost" id="btnReset">履歴を消す</button></div>
+  <div class="stats">
+    <div class="stat"><span>損益</span><b class="num" id="stPl">±¥0</b></div>
+    <div class="stat"><span>勝率</span><b class="num" id="stRate">--%</b></div>
+    <div class="stat"><span>取引数</span><b class="num" id="stN">0</b></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="sec"><span>取引履歴</span><span class="r">最新50件</span></div>
+  <ul class="hist" id="hist"></ul>
+  <div class="empty" id="histEmpty">まだ取引がありません。<br>金額を選んで HIGH か LOW をタップ。</div>
+</section>
+
+<p class="note" style="margin-top:4px">仮想資金で遊ぶデモです。レートは実勢値を起点にした模擬配信で、実際の入出金はできません。</p>
+
+<div class="result" id="result" aria-live="polite"><div class="box"><h3 id="resTitle">WIN</h3><p class="num" id="resAmt">+¥880</p><small id="resSub"></small></div></div>
+<div class="toast" id="toast"></div>
+
+<dialog id="dlg">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>設定 <button class="btn ghost" id="dlgClose">閉じる</button></h2>
+    <div class="row three">
+      <button class="btn gold" data-dep="10000">+¥10,000</button>
+      <button class="btn gold" data-dep="50000">+¥50,000</button>
+      <button class="btn gold" data-dep="100000">+¥100,000</button>
+    </div>
+    <p class="help">仮想資金を追加します（デモ口座なので実際のお金は動きません）。</p>
+    <div class="row">
+      <label class="f"><span>ペイアウト率</span><select id="setRate"><option value="1.80">1.80倍</option><option value="1.85">1.85倍</option><option value="1.88" selected>1.88倍</option><option value="1.90">1.90倍</option><option value="1.95">1.95倍</option><option value="2.00">2.00倍</option></select></label>
+      <label class="f"><span>引き分け（同値）の扱い</span><select id="setDraw"><option value="refund">購入金額を返金</option><option value="lose">負け扱い</option></select></label>
+    </div>
+    <div class="row">
+      <label class="f"><span>1日の損失上限</span><select id="setLoss"><option value="0">なし</option><option value="10000">¥10,000</option><option value="30000">¥30,000</option><option value="50000" selected>¥50,000</option><option value="100000">¥100,000</option></select></label>
+      <label class="f"><span>値動きの激しさ</span><select id="setVol"><option value="0.6">穏やか</option><option value="1" selected>通常</option><option value="1.8">荒い</option></select></label>
+    </div>
+    <div class="row">
+      <label class="toggle"><span>効果音</span><input type="checkbox" id="setSound" checked></label>
+      <label class="toggle"><span>バイブ</span><input type="checkbox" id="setVib" checked></label>
+    </div>
+    <p class="help">損失上限に達した日は、その日のうちは購入できなくなります。</p>
+    <button class="btn danger" id="btnWipe" style="width:100%">残高と履歴を初期化（¥100,000 に戻す）</button>
+  </div>
+</dialog>
+
+<script>
+(function(){
+'use strict';
+const STORE='highlow-v1';
+const EXPIRY_MS=10000;
+const TICK_MS=100;
+const WINDOW_TICKS=600;
+const START_BALANCE=100000;
+const AMT_MIN=1000, AMT_MAX=50000, AMT_STEP=1000;
+const PRESETS=[1000,5000,10000,30000,50000];
+const PAIRS={
+  'USD/JPY':{dec:3,pip:0.01,fallback:152.40,base:'USD',quote:'JPY'},
+  'EUR/JPY':{dec:3,pip:0.01,fallback:165.20,base:'EUR',quote:'JPY'},
+  'GBP/JPY':{dec:3,pip:0.01,fallback:198.70,base:'GBP',quote:'JPY'},
+  'AUD/JPY':{dec:3,pip:0.01,fallback:100.10,base:'AUD',quote:'JPY'},
+  'EUR/USD':{dec:5,pip:0.0001,fallback:1.0840,base:'EUR',quote:'USD'},
+};
+const $=id=>document.getElementById(id);
+const yen=n=>'¥'+Math.round(Math.abs(n)).toLocaleString('ja-JP');
+const signed=n=>(n>0?'+':n<0?'−':'±')+yen(n);
+const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+
+/* ---------- 状態 ---------- */
+let state=load();
+function defaults(){return{balance:START_BALANCE,pair:'USD/JPY',amount:1000,rate:1.88,draw:'refund',lossLimit:50000,vol:1,sound:true,vib:true,history:[]};}
+function load(){
+  try{const raw=JSON.parse(localStorage.getItem(STORE));if(raw&&typeof raw==='object')return Object.assign(defaults(),raw);}catch(e){}
+  return defaults();
+}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){toast('保存できませんでした');}}
+
+/* ---------- 価格エンジン（模擬ティック） ---------- */
+const series={};   // pair -> {px:number, ticks:number[], anchor:number}
+let seed=Date.now()%2147483647;
+function rnd(){seed=(seed*48271)%2147483647;return seed/2147483647;}
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function ensureSeries(pair){
+  if(series[pair])return series[pair];
+  const p=PAIRS[pair];
+  const s={px:p.fallback,anchor:p.fallback,ticks:[]};
+  for(let i=0;i<WINDOW_TICKS;i++)s.ticks.push(p.fallback);
+  series[pair]=s;return s;
+}
+function step(pair){
+  const p=PAIRS[pair],s=ensureSeries(pair);
+  // 1ティック(0.1秒)あたり約0.2pipの標準偏差。10秒で約2pip動く。緩い平均回帰で発散を防ぐ。
+  const sd=p.pip*0.2*state.vol;
+  const revert=(s.anchor-s.px)*0.0005;
+  s.px=s.px+gauss()*sd+revert;
+  s.ticks.push(s.px);if(s.ticks.length>WINDOW_TICKS)s.ticks.shift();
+  return s.px;
+}
+async function fetchAnchors(){
+  // 無料APIから直近の実勢レート（日次更新）を取得し、起点にする。失敗時は固定値のまま。
+  try{
+    const ctl=new AbortController();setTimeout(()=>ctl.abort(),6000);
+    const r=await fetch('https://open.er-api.com/v6/latest/USD',{signal:ctl.signal});
+    const j=await r.json();
+    if(!j||!j.rates)throw 0;
+    const R=j.rates;
+    for(const name in PAIRS){
+      const p=PAIRS[name];
+      if(!R[p.base]||!R[p.quote])continue;
+      const v=R[p.quote]/R[p.base];
+      const s=ensureSeries(name);
+      s.px=v;s.anchor=v;s.ticks=s.ticks.map(()=>v);
+    }
+    const t=j.time_last_update_utc?new Date(j.time_last_update_utc):null;
+    $('feedNote').textContent='実勢値起点（'+(t?t.toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'})+' 更新':'取得済')+'）・模擬配信';
+  }catch(e){
+    $('feedNote').textContent='固定値起点・模擬配信（オフライン）';
+  }
+}
+
+/* ---------- 描画 ---------- */
+const canvas=$('chart'),ctx=canvas.getContext('2d');
+function resize(){
+  const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,3);
+  canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(typeof draw==='function'&&series[state.pair])draw();
+}
+window.addEventListener('resize',resize);
+function draw(){
+  const p=PAIRS[state.pair],s=ensureSeries(state.pair);
+  const W=canvas.clientWidth,H=canvas.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  const t=s.ticks;
+  let lo=Infinity,hi=-Infinity;
+  for(let i=0;i<t.length;i++){if(t[i]<lo)lo=t[i];if(t[i]>hi)hi=t[i];}
+  if(bet)lo=Math.min(lo,bet.entry),hi=Math.max(hi,bet.entry);
+  const minSpan=p.pip*4;
+  if(hi-lo<minSpan){const m=(hi+lo)/2;lo=m-minSpan/2;hi=m+minSpan/2;}
+  const pad=(hi-lo)*0.12;lo-=pad;hi+=pad;
+  const y=v=>H-((v-lo)/(hi-lo))*(H-20)-10;
+  const x=i=>(i/(WINDOW_TICKS-1))*W;
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
+  for(let k=1;k<4;k++){const yy=Math.round(H*k/4)+.5;ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();}
+  // エントリーライン＆勝ち負け領域
+  if(bet){
+    const ey=y(bet.entry);
+    const g=ctx.createLinearGradient(0,0,0,H);
+    if(bet.dir==='high'){g.addColorStop(0,'rgba(24,195,122,.18)');g.addColorStop(Math.max(0,Math.min(1,ey/H)),'rgba(24,195,122,.02)');g.addColorStop(Math.max(0,Math.min(1,ey/H)),'rgba(255,77,94,.02)');g.addColorStop(1,'rgba(255,77,94,.18)');}
+    else{g.addColorStop(0,'rgba(255,77,94,.18)');g.addColorStop(Math.max(0,Math.min(1,ey/H)),'rgba(255,77,94,.02)');g.addColorStop(Math.max(0,Math.min(1,ey/H)),'rgba(24,195,122,.02)');g.addColorStop(1,'rgba(24,195,122,.18)');}
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.setLineDash([5,4]);ctx.strokeStyle='rgba(245,192,74,.9)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(0,ey);ctx.lineTo(W,ey);ctx.stroke();ctx.setLineDash([]);
+    // エントリー位置の縦線
+    const ei=WINDOW_TICKS-1-Math.round((Date.now()-bet.t0)/TICK_MS);
+    if(ei>0){ctx.strokeStyle='rgba(245,192,74,.5)';ctx.beginPath();ctx.moveTo(x(ei)+.5,0);ctx.lineTo(x(ei)+.5,H);ctx.stroke();}
+  }
+  // ライン
+  const last=t[t.length-1],first=t[0];
+  const up=last>=first,col=up?'#18c37a':'#ff4d5e',colA=up?'rgba(24,195,122,.22)':'rgba(255,77,94,.22)';
+  ctx.beginPath();
+  for(let i=0;i<t.length;i++){const xx=x(i),yy=y(t[i]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);}
+  ctx.strokeStyle=col;ctx.lineWidth=1.8;ctx.lineJoin='round';ctx.stroke();
+  // 面
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();
+  const fg=ctx.createLinearGradient(0,0,0,H);fg.addColorStop(0,colA);fg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=fg;ctx.fill();
+  // 現在値ドット
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(W-2,y(last),3.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.18)';ctx.beginPath();ctx.arc(W-2,y(last),8,0,Math.PI*2);ctx.fill();
+}
+
+/* ---------- 取引 ---------- */
+let bet=null;   // {dir,amount,entry,t0,pair,rate}
+let prevPx=null;
+function fmtPx(v,pair){return v.toFixed(PAIRS[pair||state.pair].dec);}
+function renderPrice(px){
+  const el=$('price');
+  const s=fmtPx(px);
+  const i=s.length-2;
+  el.innerHTML=s.slice(0,i)+'<small>'+s.slice(i)+'</small>';
+  el.classList.remove('up','dn');
+  if(prevPx!=null){if(px>prevPx)el.classList.add('up');else if(px<prevPx)el.classList.add('dn');}
+  prevPx=px;
+}
+function tick(){
+  const px=step(state.pair);
+  for(const name in series){if(name!==state.pair)step(name);}
+  renderPrice(px);
+  if(bet){
+    const left=bet.t0+EXPIRY_MS-Date.now();
+    const sec=Math.max(0,Math.ceil(left/1000));
+    $('ringNum').textContent=sec;
+    $('ringFg').style.strokeDashoffset=(175.9*(1-Math.max(0,left)/EXPIRY_MS)).toFixed(1);
+    const pl=$('plTag');
+    const diff=px-bet.entry;
+    const winning=bet.dir==='high'?diff>0:diff<0;
+    pl.className='tag '+(diff===0?'flat':winning?'win':'lose');
+    pl.textContent=diff===0?'同値':(winning?'的中中 ':'外れ中 ')+(diff>0?'+':'')+(diff/PAIRS[state.pair].pip).toFixed(1)+'pips';
+    if(left<=0)settle(px);
+  }
+  draw();
+}
+function currentAmount(){
+  const v=parseInt(String($('amtInput').value).replace(/[^\d]/g,''),10);
+  return isNaN(v)?0:v;
+}
+function setAmount(v,fromInput){
+  v=Math.max(0,Math.min(AMT_MAX,Math.round(v)));
+  state.amount=v;save();
+  if(!fromInput)$('amtInput').value=v?v.toLocaleString('ja-JP'):'';
+  document.querySelectorAll('.amt').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===v)));
+  updatePay();
+}
+function updatePay(){
+  const a=state.amount||0;
+  $('payRate').textContent=state.rate.toFixed(2)+'倍';
+  $('payWin').textContent='+'+yen(a*(state.rate-1));
+  $('payLose').textContent='−'+yen(a);
+  updateButtons();
+}
+function todayLoss(){
+  const k=todayKey();let s=0;
+  for(const h of state.history){if(h.day===k)s+=h.pl;}
+  return s;
+}
+function blockedReason(){
+  if(bet)return '判定中…';
+  const a=state.amount;
+  if(a<AMT_MIN)return '最低購入金額は '+yen(AMT_MIN)+' です';
+  if(a%AMT_STEP)return yen(AMT_STEP)+' 単位で入力してください';
+  if(a>state.balance)return '残高不足（残高 '+yen(state.balance)+'）。設定から仮想資金を追加できます';
+  if(state.lossLimit>0&&todayLoss()<=-state.lossLimit)return '本日の損失上限（'+yen(state.lossLimit)+'）に達しました';
+  return '';
+}
+function updateButtons(){
+  const r=blockedReason();
+  $('btnHigh').disabled=$('btnLow').disabled=!!r;
+  $('hlNote').textContent=r||'購入と同時に判定開始。10秒後のレートで自動判定します。';
+}
+function place(dir){
+  const r=blockedReason();if(r){toast(r);return;}
+  const s=ensureSeries(state.pair);
+  bet={dir,amount:state.amount,entry:s.px,t0:Date.now(),pair:state.pair,rate:state.rate};
+  state.balance-=bet.amount;save();
+  renderBalance();
+  $('entryTag').textContent='ENTRY '+fmtPx(bet.entry);
+  $('live').className='live on';
+  $('ring').className='ring on';
+  $('ringNum').textContent='10';$('ringFg').style.strokeDashoffset='0';
+  document.querySelectorAll('.pair').forEach(b=>b.disabled=true);
+  const pl=$('plTag');pl.className='tag '+(dir==='high'?'hi':'lo');pl.textContent=(dir==='high'?'▲ HIGH ':'▼ LOW ')+yen(bet.amount);
+  beep(dir==='high'?880:660,0.06);vib(15);
+  updateButtons();
+}
+function settle(px){
+  const b=bet;bet=null;
+  const diff=px-b.entry;
+  let outcome,pl;
+  if(diff===0){outcome=state.draw==='refund'?'draw':'lose';}
+  else outcome=(b.dir==='high'?diff>0:diff<0)?'win':'lose';
+  if(outcome==='win'){pl=Math.round(b.amount*(b.rate-1));state.balance+=b.amount+pl;}
+  else if(outcome==='draw'){pl=0;state.balance+=b.amount;}
+  else pl=-b.amount;
+  state.history.unshift({at:b.t0,day:todayKey(),pair:b.pair,dir:b.dir,amount:b.amount,entry:b.entry,settle:px,outcome,pl});
+  if(state.history.length>50)state.history.length=50;
+  save();
+  $('live').className='live';$('ring').className='ring';
+  document.querySelectorAll('.pair').forEach(el=>el.disabled=false);
+  showResult(outcome,pl,b,px);
+  renderBalance();renderStats();renderHist();updateButtons();
+}
+let resTimer=null;
+function showResult(outcome,pl,b,px){
+  const r=$('result');
+  $('resTitle').textContent=outcome==='win'?'WIN':outcome==='draw'?'DRAW':'LOSE';
+  $('resAmt').textContent=outcome==='draw'?'返金 '+yen(b.amount):signed(pl);
+  $('resSub').textContent=fmtPx(b.entry,b.pair)+' → '+fmtPx(px,b.pair)+'（'+((px-b.entry)/PAIRS[b.pair].pip>0?'+':'')+((px-b.entry)/PAIRS[b.pair].pip).toFixed(1)+'pips）';
+  r.className='result on '+(outcome==='draw'?'flat':outcome);
+  clearTimeout(resTimer);resTimer=setTimeout(()=>{r.className='result';},1700);
+  if(outcome==='win'){beep(1046,0.08);setTimeout(()=>beep(1318,0.12),90);vib([20,40,40]);}
+  else if(outcome==='lose'){beep(220,0.18);vib(60);}
+  else{beep(520,0.08);vib(20);}
+}
+
+/* ---------- 表示 ---------- */
+function renderBalance(){$('balance').textContent=yen(state.balance);}
+function renderStats(){
+  const k=todayKey();let n=0,w=0,pl=0,decided=0;
+  for(const h of state.history){if(h.day!==k)continue;n++;pl+=h.pl;if(h.outcome!=='draw'){decided++;if(h.outcome==='win')w++;}}
+  const e=$('stPl');e.textContent=signed(pl);e.className='num '+(pl>0?'pos':pl<0?'neg':'');
+  $('stRate').textContent=decided?Math.round(w/decided*100)+'%':'--%';
+  $('stN').textContent=n;
+}
+function renderHist(){
+  const ul=$('hist');ul.innerHTML='';
+  $('histEmpty').style.display=state.history.length?'none':'';
+  for(const h of state.history){
+    const li=document.createElement('li');
+    const d=new Date(h.at);
+    const tm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+    const pips=((h.settle-h.entry)/PAIRS[h.pair].pip).toFixed(1);
+    li.innerHTML='<div class="t num"><b>'+tm+'</b>'+h.day.slice(5).replace('-','/')+'</div>'
+      +'<div class="d"><span class="tag '+(h.dir==='high'?'hi':'lo')+'">'+(h.dir==='high'?'▲ HIGH':'▼ LOW')+'</span>'+h.pair
+      +'<br><span class="num" style="color:var(--ink-3);font-size:11px">'+fmtPx(h.entry,h.pair)+' → '+fmtPx(h.settle,h.pair)+' ('+(pips>0?'+':'')+pips+'p)</span></div>'
+      +'<div class="p num '+(h.pl>0?'pos':h.pl<0?'neg':'')+'">'+(h.outcome==='draw'?'返金':signed(h.pl))+'<small>'+yen(h.amount)+' 購入</small></div>';
+    ul.appendChild(li);
+  }
+}
+function renderPairs(){
+  const w=$('pairs');w.innerHTML='';
+  for(const name in PAIRS){
+    const b=document.createElement('button');b.className='pair';b.textContent=name;b.setAttribute('aria-pressed',String(name===state.pair));
+    b.onclick=()=>{if(bet)return;state.pair=name;save();prevPx=null;renderPairs();$('pairName').textContent=name;ensureSeries(name);draw();};
+    w.appendChild(b);
+  }
+}
+function renderAmts(){
+  const w=$('amts');w.innerHTML='';
+  for(const v of PRESETS){
+    const b=document.createElement('button');b.className='amt num';b.dataset.v=v;
+    b.innerHTML=(v>=10000?(v/10000)+'万':v.toLocaleString('ja-JP'))+'<small>¥'+v.toLocaleString('ja-JP')+'</small>';
+    b.onclick=()=>setAmount(v);
+    w.appendChild(b);
+  }
+}
+
+/* ---------- 音・バイブ・トースト ---------- */
+let actx=null;
+function beep(freq,dur){
+  if(!state.sound)return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.type='sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.18,actx.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+dur);
+    o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+dur+0.02);
+  }catch(e){}
+}
+function vib(p){if(state.vib&&navigator.vibrate)try{navigator.vibrate(p);}catch(e){}}
+let toastTimer=null;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2200);}
+
+/* ---------- イベント ---------- */
+$('btnHigh').onclick=()=>place('high');
+$('btnLow').onclick=()=>place('low');
+$('amtInput').addEventListener('input',e=>{setAmount(currentAmount(),true);});
+$('amtInput').addEventListener('blur',()=>{setAmount(state.amount);});
+$('amtPlus').onclick=()=>setAmount(Math.min(AMT_MAX,(state.amount||0)+AMT_STEP));
+$('amtMinus').onclick=()=>setAmount(Math.max(AMT_MIN,(state.amount||0)-AMT_STEP));
+$('btnReset').onclick=()=>{if(!state.history.length)return;if(confirm('取引履歴を消しますか？（残高はそのままです）')){state.history=[];save();renderStats();renderHist();updateButtons();}};
+
+const dlg=$('dlg');
+$('btnSettings').onclick=()=>{
+  $('setRate').value=state.rate.toFixed(2);$('setDraw').value=state.draw;$('setLoss').value=String(state.lossLimit);$('setVol').value=String(state.vol);
+  $('setSound').checked=state.sound;$('setVib').checked=state.vib;
+  dlg.showModal();
+};
+$('dlgClose').onclick=()=>dlg.close();
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close();});
+dlg.querySelectorAll('[data-dep]').forEach(b=>b.onclick=()=>{state.balance+=+b.dataset.dep;save();renderBalance();updateButtons();toast('仮想資金 '+yen(+b.dataset.dep)+' を追加しました');});
+$('setRate').onchange=e=>{state.rate=parseFloat(e.target.value);save();updatePay();};
+$('setDraw').onchange=e=>{state.draw=e.target.value;save();};
+$('setLoss').onchange=e=>{state.lossLimit=+e.target.value;save();updateButtons();};
+$('setVol').onchange=e=>{state.vol=parseFloat(e.target.value);save();};
+$('setSound').onchange=e=>{state.sound=e.target.checked;save();};
+$('setVib').onchange=e=>{state.vib=e.target.checked;save();};
+$('btnWipe').onclick=()=>{if(confirm('残高を ¥100,000 に戻し、履歴をすべて消します。よろしいですか？')){const keep={rate:state.rate,draw:state.draw,lossLimit:state.lossLimit,vol:state.vol,sound:state.sound,vib:state.vib,pair:state.pair};state=Object.assign(defaults(),keep);save();renderBalance();renderStats();renderHist();setAmount(state.amount);dlg.close();toast('初期化しました');}};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')resize();});
+
+/* ---------- 起動 ---------- */
+$('limits').textContent=yen(AMT_MIN)+' 〜 '+yen(AMT_MAX)+'（'+yen(AMT_STEP)+'単位）';
+renderPairs();renderAmts();$('pairName').textContent=state.pair;
+ensureSeries(state.pair);
+resize();renderBalance();renderStats();renderHist();setAmount(state.amount||1000);
+renderPrice(ensureSeries(state.pair).px);draw();
+fetchAnchors().then(()=>{prevPx=null;renderPrice(ensureSeries(state.pair).px);draw();});
+setInterval(tick,TICK_MS);
+})();
+</script>
+</body>
+</html>
