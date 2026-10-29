@@ -275,12 +275,12 @@ dialog::backdrop{background:rgba(10,14,30,.5);backdrop-filter:blur(2px)}
             <div class="unitwrap"><input id="sTax" type="number" inputmode="decimal" min="0" max="100" step="0.1"><span class="unit">%</span></div></label>
           <label class="f"><span>消費税をかける範囲</span>
             <div class="sel"><select id="sTaxOn">
-              <option value="ot">超過分（3,000円×時間）のみ</option>
               <option value="all">固定報酬＋超過分の全額</option>
+              <option value="ot">超過分（3,000円×時間）のみ</option>
             </select></div></label>
         </div>
         <button class="btn primary" type="submit">設定を保存</button>
-        <p class="hint">初期値: 140時間以上で 60万円、180時間を超えた分は 1時間 3,000円、超過分に消費税 10%。「140時間を超えたら」を「140時間ちょうど」から出るものとして扱っています。違う場合は上の値を変えてください。</p>
+        <p class="hint">初期値: 140時間以上で 60万円、180時間を超えた分は 1時間 3,000円、全額（固定報酬＋超過分）に消費税 10%。「140時間を超えたら」を「140時間ちょうど」から出るものとして扱っています。違う場合は上の値を変えてください。</p>
       </form>
     </div>
   </details>
@@ -349,7 +349,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show'
 
 /* ═══════════════ 保存 ═══════════════ */
 const STORE='worktime.v1';
-const DEFAULT_SETTINGS={base:140,baseAmount:600000,otFrom:180,otRate:3000,taxRate:10,taxOn:'ot'};
+const DEFAULT_SETTINGS={base:140,baseAmount:600000,otFrom:180,otRate:3000,taxRate:10,taxOn:'all'};
 // 初回だけ入る初期データ。2026年10月は月末前にまとめて 190.5 時間。
 const SEED={monthly:{'2026-10':{hours:190.5,memo:'月末にまとめて入力'}}};
 let state=load();
@@ -425,7 +425,7 @@ function render(){
   rows.push(`<tr class="${p.tax>0?'':'dim'}"><td>消費税 ${hrs(s.taxRate)}%<small>${s.taxOn==='all'?'固定報酬＋超過分':'超過分'}にかけた金額</small></td><td class="v">${yen(p.tax)}</td></tr>`);
   rows.push(`<tr class="sum"><td>合計（税込）</td><td class="v">${yen(p.total)}</td></tr>`);
   $('#payTbl').innerHTML=rows.join('');
-  $('#payNote').textContent=`税抜 ${yen(p.subtotal)} ＋ 消費税 ${yen(p.tax)}。${s.taxOn==='all'?'消費税は全額にかけています。':'消費税は超過分にだけかけています。固定報酬にもかかる場合は設定で「全額」に変えてください。'}`;
+  $('#payNote').textContent=`税抜 ${yen(p.subtotal)} ＋ 消費税 ${yen(p.tax)}。${s.taxOn==='all'?'消費税は固定報酬＋超過分の全額にかけています。':'消費税は超過分にだけかけています。'}`;
 
   // 日別一覧
   const list=entriesOf(cur);
