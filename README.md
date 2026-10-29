@@ -11,6 +11,7 @@ GitHub Pages で公開している個人用 Web ページ群と、その生成�
 | `attack-map/` | **日本へのサイバー攻撃マップ** — Cloudflare Radar の送信元国シェアを地球儀とランキングで表示。詳細は [attack-map/README.md](attack-map/README.md) | 単一 HTML + Node.js スクリプト + Cloudflare Worker |
 | `seats/` | **席割り表** — 出社日ごとの座席割り当て | 単一 HTML |
 | `caffeine/` | **カフェイン時計** — 体内カフェイン量の時間推移 | 単一 HTML |
+| `subscriptions/` | **サブスク管理** — 契約中のサブスクを登録し、月額・年額換算と今後30日の支払いをスマホで確認。データは端末内（localStorage）に保存し、JSON/CSV で書き出せる | 単一 HTML |
 | `e-card-src/` → `e-card/` | **Eカード 極限心理戦** — カイジの E カード対 CPU。`e-card-src/` がソース、`e-card/` がビルド成果物。詳細は [e-card-src/README.md](e-card-src/README.md) | React + Vite + Tailwind |
 | `keiba/` | **競馬予想シミュレーター** — TARGET frontier JV データで市場確率の校正と特徴量検証。詳細は [keiba/README.md](keiba/README.md) | Python（numpy / pandas） |
 
@@ -39,6 +40,7 @@ cd e-card-src && npm ci # e-card を触る場合のみ
 python3 -m http.server 8000
 # http://localhost:8000/            コンパス手帳
 # http://localhost:8000/attack-map/ 攻撃マップ（data/latest.json があればそれを読む）
+# http://localhost:8000/subscriptions/ サブスク管理
 ```
 
 ## テストと Lint
