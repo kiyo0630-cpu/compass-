@@ -190,9 +190,9 @@ try{ const s=localStorage.getItem(KEY); if(s) state=Object.assign(state, JSON.pa
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 MEMBERS.forEach(m=>{ if(state.rates[m.id]==null) state.rates[m.id]=100; if(!state.leaves[m.id]) state.leaves[m.id]=[]; });
 // 初期データ: 10月実績+11月見込みの合計(%)を2か月(営業日40日)で割った値を12月の起点にする
-const PRESET={version:2, base:{month:'2026-12',days:40},
+const PRESET={version:3, base:{month:'2026-12',days:40},
   closed:['2026-12-30','2026-12-31'],
-  rates:{nishikawa:100, shimao:95.45, onoe:49.05, katayama:49.05, sekiguchi:58.15, suda:34.7, baba:33.95, kadono:33.95, hirota:33.95},
+  rates:{nishikawa:100, shimao:90.9, onoe:49.05, katayama:49.05, sekiguchi:53.6, suda:34.7, baba:33.95, kadono:33.95, hirota:38.5},
   specified:{
     onoe:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
     katayama:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
