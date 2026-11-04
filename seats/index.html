@@ -114,7 +114,7 @@ td.spec{font-weight:500;background:#e4efe6}
 <div class="card">
   <h2>固定の曜日</h2>
   <div class="tablewrap"><table style="min-width:420px" id="fixedGrid"></table></div>
-  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。関口は水曜固定です。</p>
+  <p class="help">チェックした曜日はその人の固定席になります(1日3人まで)。チェックのない席は自動席です。メンバー欄で「指定出社日」を入れた月は、その人は固定曜日ではなく指定日に座ります。指定日と固定曜日を合わせて3人を超える日は、後ろの人(ペアは2人とも)を自動扱いにして ⚠ を付けます。尾上・片山はチームなので、自動席でも相手がその日に出社していればできるだけ同じ日に入れます。</p>
 </div>
 
 <div class="card">
@@ -132,7 +132,7 @@ td.spec{font-weight:500;background:#e4efe6}
   </p>
   <p class="help" style="margin-bottom:10px">各メンバーの出社率は「基準月の初日時点で、基準日数分の実績から出した値」として入力します。基準月以降は、この表の割り当て(休暇を除く)を出社として積み上げ、出社率を更新しながら空席を埋めます。</p>
   <div class="members" id="members"></div>
-  <p class="help">自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
+  <p class="help">「表示月の回数」で、その月の出社回数の最低・最高を人ごとに指定できます(固定曜日や指定日も回数に含みます)。最高に達した人は自動席に入らず、最低がある人は月内のペースより遅れていると最優先で入ります。自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
   <p style="margin-top:8px"><button class="btn danger" id="reset">保存データをすべて消す</button></p>
 </div>
 
@@ -146,7 +146,7 @@ const MEMBERS = [
   {id:'shimao',    name:'島尾', daily:true},
   {id:'onoe',      name:'尾上', fixed:[1,2], pair:'katayama'},
   {id:'katayama',  name:'片山', fixed:[1,2], pair:'onoe'},
-  {id:'sekiguchi', name:'関口', fixed:[3]},
+  {id:'sekiguchi', name:'関口', fixed:[]},
   {id:'suda',      name:'須田', fixed:[]},
   {id:'baba',      name:'馬場', fixed:[1]},
   {id:'kadono',    name:'門野', fixed:[2]},
@@ -190,8 +190,9 @@ try{ const s=localStorage.getItem(KEY); if(s) state=Object.assign(state, JSON.pa
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 MEMBERS.forEach(m=>{ if(state.rates[m.id]==null) state.rates[m.id]=100; if(!state.leaves[m.id]) state.leaves[m.id]=[]; });
 // 初期データ: 10月実績+11月見込みの合計(%)を2か月(営業日40日)で割った値を12月の起点にする
-const PRESET={version:3, base:{month:'2026-12',days:40},
+const PRESET={version:4, base:{month:'2026-12',days:40},
   closed:['2026-12-30','2026-12-31'],
+  quota:{kadono:{'2026-12':{max:9}}, sekiguchi:{'2026-12':{min:5}}},
   rates:{nishikawa:100, shimao:90.9, onoe:49.05, katayama:49.05, sekiguchi:53.6, suda:34.7, baba:33.95, kadono:33.95, hirota:38.5},
   specified:{
     onoe:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
@@ -200,13 +201,15 @@ const PRESET={version:3, base:{month:'2026-12',days:40},
 if(!state.specified) state.specified={};
 MEMBERS.forEach(m=>{ if(!state.specified[m.id]) state.specified[m.id]=[]; });
 if(!state.closed) state.closed=[];
+if(!state.quota) state.quota={};
 if(state.presetVersion!==PRESET.version){
+  Object.keys(PRESET.quota).forEach(id=>{ state.quota[id]=Object.assign(state.quota[id]||{},PRESET.quota[id]); });
   state.base=Object.assign({},PRESET.base); Object.assign(state.rates,PRESET.rates);
   Object.keys(PRESET.specified).forEach(id=>{ state.specified[id]=PRESET.specified[id].slice(); });
   PRESET.closed.forEach(k=>{ if(!state.closed.includes(k)) state.closed.push(k); });
   state.presetVersion=PRESET.version; save();
 }
-const FIXED_VERSION=4; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
+const FIXED_VERSION=5; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
 if(!state.fixed||state.fixedVersion!==FIXED_VERSION){ state.fixed={}; state.fixedVersion=FIXED_VERSION; }
 MEMBERS.forEach(m=>{ if(!m.daily&&!state.fixed[m.id]) state.fixed[m.id]=(m.fixed||[]).slice(); });
 if(!state.base) state.base={};
@@ -256,7 +259,15 @@ function closed(d){ return state.closed.includes(ymd(d)); }
 function workday(d){ const wd=d.getDay(); return wd>=1&&wd<=5&&!holiday(d)&&!closed(d); }
 function baseStart(){ return new Date(state.base.month+'-01T00:00:00'); }
 // 1日分の割り当て。rateOf(id) はその時点の出社率(低い人から空席に入る)
-function assignDay(d, rateOf){
+// 月の営業日数
+const wdCache={};
+function workdaysInMonth(y,m){ const k=y+'-'+m; if(wdCache[k]!=null) return wdCache[k]; let n=0; for(let d=new Date(y,m,1); d.getMonth()===m; d.setDate(d.getDate()+1)) if(workday(d)) n++; return wdCache[k]=n; }
+const quotaOf=(id,mon)=>(state.quota[id]||{})[mon]||{};
+// ctx: {count: 月内の出社回数(その日より前), dayNo: 月内の営業日番号(1始まり), total: 月の営業日数}
+function assignDay(d, rateOf, ctx){
+  ctx=ctx||{count:{}, dayNo:1, total:workdaysInMonth(d.getFullYear(),d.getMonth())};
+  const mon=ymd(d).slice(0,7);
+  const cnt=id=>ctx.count[id]||0;
   const wd=d.getDay(), key=ymd(d);
   const onLeave=id=>state.leaves[id].includes(key);
   const base=seatsForDate(d);
@@ -269,9 +280,19 @@ function assignDay(d, rateOf){
   // 自動席: 出社率の低い順。ペアは2席空いていれば2人まとめて(低い方の率で)候補にし、
   // 相手がすでに座っていれば最優先、相手がいるのに1人だけ入る場合は後回し。
   // 避けたい相手(avoid)が座っている日は後回し。
-  const avail=m=>!used.has(m.id)&&!onLeave(m.id);
+  // 上限に達した人は自動席に入れない。下限がある人は、月内のペースより遅れていれば最優先
+  const q=m=>quotaOf(m.id,mon);
+  // 上限の判定には、その月の残りの固定日・指定日(休暇を除く)も数える
+  const futureFixed=m=>{ let n=0; const hasSpec=state.specified[m.id].some(x=>x.startsWith(mon));
+    for(let t=new Date(d); ; ){ t.setDate(t.getDate()+1); if(ymd(t).slice(0,7)!==mon) break; if(!workday(t)) continue; const k=ymd(t);
+      if(state.leaves[m.id].includes(k)) continue;
+      if(hasSpec?state.specified[m.id].includes(k):(state.fixed[m.id]||[]).includes(t.getDay())) n++; }
+    return n; };
+  const capped=m=>q(m).max!=null&&cnt(m.id)+futureFixed(m)>=q(m).max;
+  const behind=m=>q(m).min!=null&&cnt(m.id)<Math.ceil(q(m).min*ctx.dayNo/ctx.total);
+  const avail=m=>!used.has(m.id)&&!onLeave(m.id)&&!capped(m);
   const avoided=m=>(m.avoid||[]).some(a=>used.has(a));
-  const baseScore=m=>(avoided(m)?1:0)+rateOf(m.id);
+  const baseScore=m=>(avoided(m)?1:0)+(behind(m)?-1:0)+rateOf(m.id);
   const openSeats=()=>seats.filter(x=>!x.id);
   while(openSeats().length){
     const cands=[];
@@ -296,11 +317,15 @@ function simulate(untilDate){
   const D=Number(state.base.days)||20;
   const rateOf=id=>((state.rates[id]/100)*D+att[id])/(D+wdays);
   const days={}, start=baseStart();
+  let ctx=null, curMon='';
   for(let d=new Date(start); d<=untilDate; d.setDate(d.getDate()+1)){
     if(!workday(d)) continue;
-    const seats=assignDay(d, rateOf);
+    const mon=ymd(d).slice(0,7);
+    if(mon!==curMon){ curMon=mon; ctx={count:{}, dayNo:0, total:workdaysInMonth(d.getFullYear(),d.getMonth())}; }
+    ctx.dayNo++;
+    const seats=assignDay(d, rateOf, ctx);
     days[ymd(d)]=seats;
-    seats.forEach(s=>{ if(s.id) att[s.id]++; }); wdays++;
+    seats.forEach(s=>{ if(s.id){ att[s.id]++; ctx.count[s.id]=(ctx.count[s.id]||0)+1; } }); wdays++;
   }
   const rates={}; MEMBERS.forEach(m=>rates[m.id]=rateOf(m.id));
   return {days, rates, att, wdays};
@@ -310,7 +335,8 @@ function monthPlan(y,m){
   const first=new Date(y,m,1), last=new Date(y,m+1,0);
   if(last<baseStart()){
     const days={}; const rateOf=id=>state.rates[id]/100;
-    for(let d=new Date(first); d<=last; d.setDate(d.getDate()+1)) if(workday(d)) days[ymd(d)]=assignDay(d, rateOf);
+    const ctx={count:{}, dayNo:0, total:workdaysInMonth(y,m)};
+    for(let d=new Date(first); d<=last; d.setDate(d.getDate()+1)) if(workday(d)){ ctx.dayNo++; const seats=assignDay(d, rateOf, ctx); days[ymd(d)]=seats; seats.forEach(s=>{ if(s.id) ctx.count[s.id]=(ctx.count[s.id]||0)+1; }); }
     const rates={}; MEMBERS.forEach(x=>rates[x.id]=rateOf(x.id));
     return {days, rates, startRates:rates, att:{}, wdays:0};
   }
@@ -420,6 +446,7 @@ function renderMembers(){
     const label=m.daily?'毎日':((state.fixed[m.id]||[]).map(w=>WDN[w]).join('・')||'固定なし')+(m.pair?'(ペア: '+memberById(m.pair).name+')':'')+(m.avoid?'('+m.avoid.map(a=>memberById(a).name).join('・')+'がいない日)':'');
     div.innerHTML=`<div class="name"><span>${m.name}</span><span class="rule">${label}</span></div>
       <div class="rate">基準月時点の出社率 <input type="number" min="0" max="100" step="0.1" value="${state.rates[m.id]}" data-id="${m.id}"> %</div>
+      ${m.daily?'':`<div class="rate">表示月の回数 最低 <input type="number" min="0" max="31" step="1" data-qmin="${m.id}" value="${quotaOf(m.id,curMonthKey()).min??''}"> 最高 <input type="number" min="0" max="31" step="1" data-qmax="${m.id}" value="${quotaOf(m.id,curMonthKey()).max??''}"></div>`}
       <div>休暇 <input type="date" data-leave="${m.id}"></div>
       <div class="leaves">${leaves.map(l=>`<span>${l.slice(5).replace('-','/')}<b data-rm="${m.id}" data-date="${l}">×</b></span>`).join('')}</div>
       ${m.daily?'':`<div class="bulk">指定出社日 <input type="text" data-spec="${m.id}" placeholder="例: 12/1 3 7 9 (年は表示月に近い方)"><button class="btn" data-specadd="${m.id}">追加</button></div>
@@ -429,6 +456,14 @@ function renderMembers(){
   box.querySelectorAll('input[type=number]').forEach(i=>i.addEventListener('change',e=>{
     let v=Number(e.target.value); if(isNaN(v)) v=100; v=Math.round(Math.max(0,Math.min(100,v))*100)/100; e.target.value=v;
     state.rates[e.target.dataset.id]=v; save(); render();
+  }));
+  box.querySelectorAll('input[data-qmin],input[data-qmax]').forEach(i=>i.addEventListener('change',e=>{
+    const id=e.target.dataset.qmin||e.target.dataset.qmax, key=e.target.dataset.qmin?'min':'max', mon=curMonthKey();
+    state.quota[id]=state.quota[id]||{}; const q=Object.assign({},state.quota[id][mon]||{});
+    const v=e.target.value===''?null:Math.max(0,Math.round(Number(e.target.value)));
+    if(v==null) delete q[key]; else q[key]=v;
+    if(Object.keys(q).length) state.quota[id][mon]=q; else delete state.quota[id][mon];
+    save(); render();
   }));
   box.querySelectorAll('input[type=date]').forEach(i=>i.addEventListener('change',e=>{
     const id=e.target.dataset.leave, v=e.target.value; if(!v) return;
@@ -454,10 +489,10 @@ const bm=document.getElementById('baseMonth'), bd=document.getElementById('baseD
 bm.value=state.base.month; bd.value=state.base.days;
 bm.addEventListener('change',()=>{ if(/^\d{4}-\d{2}$/.test(bm.value)){ state.base.month=bm.value; save(); render(); } });
 bd.addEventListener('change',()=>{ let v=Math.round(Number(bd.value)); if(!(v>=1)) v=20; bd.value=v; state.base.days=v; save(); render(); });
-document.getElementById('prev').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);render();};
-document.getElementById('next').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);render();};
-document.getElementById('today').onclick=()=>{const t=new Date();cur=new Date(t.getFullYear(),t.getMonth(),1);render();};
-document.getElementById('reset').onclick=()=>{ if(!confirm('出社率・休暇・手動指定をすべて消します。よろしいですか?')) return; state={rates:{},leaves:{},overrides:{},fixed:{},specified:{},closed:[],fixedVersion:FIXED_VERSION,presetVersion:PRESET.version,base:{month:thisMonth(),days:20}}; MEMBERS.forEach(m=>{state.rates[m.id]=100;state.leaves[m.id]=[];state.specified[m.id]=[];if(!m.daily)state.fixed[m.id]=(m.fixed||[]).slice();}); bm.value=state.base.month; bd.value=state.base.days; save(); renderFixed(); renderClosed(); renderMembers(); render(); };
+document.getElementById('prev').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);renderMembers();render();};
+document.getElementById('next').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);renderMembers();render();};
+document.getElementById('today').onclick=()=>{const t=new Date();cur=new Date(t.getFullYear(),t.getMonth(),1);renderMembers();render();};
+document.getElementById('reset').onclick=()=>{ if(!confirm('出社率・休暇・手動指定をすべて消します。よろしいですか?')) return; state={rates:{},leaves:{},overrides:{},fixed:{},specified:{},closed:[],quota:{},fixedVersion:FIXED_VERSION,presetVersion:PRESET.version,base:{month:thisMonth(),days:20}}; MEMBERS.forEach(m=>{state.rates[m.id]=100;state.leaves[m.id]=[];state.specified[m.id]=[];if(!m.daily)state.fixed[m.id]=(m.fixed||[]).slice();}); bm.value=state.base.month; bd.value=state.base.days; save(); renderFixed(); renderClosed(); renderMembers(); render(); };
 renderFixed(); renderClosed(); renderMembers(); render();
 </script>
 </body>
