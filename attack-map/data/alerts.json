@@ -1,27 +1,27 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-04T23:40:43.653Z",
- "snapshotGeneratedAt": "2026-11-04T23:40:43.460Z",
+ "generatedAt": "2026-11-05T06:48:49.788Z",
+ "snapshotGeneratedAt": "2026-11-05T06:48:49.584Z",
  "target": "JP",
  "dateRange": "1d",
  "status": "warn",
  "baseline": {
   "samples": 27,
   "days": 7,
-  "from": "2026-10-29T00:58:47.725Z",
-  "to": "2026-11-04T17:19:23.256Z",
+  "from": "2026-10-29T07:07:22.533Z",
+  "to": "2026-11-04T23:40:43.460Z",
   "sufficient": true
  },
  "alerts": [
   {
-   "id": "l3-new-dominant:CA:2026-11-04",
+   "id": "l3-new-dominant:CA:2026-11-05",
    "severity": "warn",
    "kind": "l3-new-dominant",
    "key": "CA",
    "title": "L3 送信元の首位に Canada が新たに浮上",
-   "detail": "99.8%（27 回の平均 4.9%）。少数の大型 DDoS が原因の可能性",
+   "detail": "99.8%（27 回の平均 8.2%）。少数の大型 DDoS が原因の可能性",
    "value": 99.8,
-   "baseline": 4.9
+   "baseline": 8.2
   }
  ]
 }
