@@ -1,15 +1,15 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-11T06:23:51.072Z",
- "snapshotGeneratedAt": "2026-11-11T06:23:50.833Z",
+ "generatedAt": "2026-11-11T15:13:57.750Z",
+ "snapshotGeneratedAt": "2026-11-11T15:13:57.502Z",
  "target": "JP",
  "dateRange": "1d",
  "status": "warn",
  "baseline": {
   "samples": 25,
   "days": 7,
-  "from": "2026-11-04T09:14:41.469Z",
-  "to": "2026-11-10T23:23:53.399Z",
+  "from": "2026-11-04T17:19:23.256Z",
+  "to": "2026-11-11T06:23:50.833Z",
   "sufficient": true
  },
  "alerts": [
@@ -19,9 +19,9 @@
    "kind": "l3-new-dominant",
    "key": "KR",
    "title": "L3 送信元の首位に Korea, South が新たに浮上",
-   "detail": "64.7%（25 回の平均 4.3%）。少数の大型 DDoS が原因の可能性",
-   "value": 64.7,
-   "baseline": 4.3
+   "detail": "100.0%（25 回の平均 6.9%）。少数の大型 DDoS が原因の可能性",
+   "value": 100,
+   "baseline": 6.9
   }
  ]
 }
