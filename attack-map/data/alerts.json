@@ -1,16 +1,27 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-13T00:26:18.305Z",
- "snapshotGeneratedAt": "2026-11-13T00:26:17.751Z",
+ "generatedAt": "2026-11-13T07:59:25.133Z",
+ "snapshotGeneratedAt": "2026-11-13T07:59:24.893Z",
  "target": "JP",
  "dateRange": "1d",
- "status": "ok",
+ "status": "warn",
  "baseline": {
   "samples": 25,
   "days": 7,
-  "from": "2026-11-06T02:27:16.930Z",
-  "to": "2026-11-12T18:58:09.181Z",
+  "from": "2026-11-06T10:54:28.701Z",
+  "to": "2026-11-13T00:26:17.751Z",
   "sufficient": true
  },
- "alerts": []
+ "alerts": [
+  {
+   "id": "l3-new-dominant:NL:2026-11-13",
+   "severity": "warn",
+   "kind": "l3-new-dominant",
+   "key": "NL",
+   "title": "L3 送信元の首位に Netherlands が新たに浮上",
+   "detail": "69.6%（25 回の平均 8.6%）。少数の大型 DDoS が原因の可能性",
+   "value": 69.6,
+   "baseline": 8.6
+  }
+ ]
 }
