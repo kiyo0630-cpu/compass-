@@ -132,7 +132,7 @@ td.spec{font-weight:500;background:#e4efe6}
   </p>
   <p class="help" style="margin-bottom:10px">各メンバーの出社率は「基準月の初日時点で、基準日数分の実績から出した値」として入力します。基準月以降は、この表の割り当て(休暇を除く)を出社として積み上げ、出社率を更新しながら空席を埋めます。</p>
   <div class="members" id="members"></div>
-  <p class="help">「表示月の回数」で、その月の出社回数の最低・最高を人ごとに指定できます(固定曜日や指定日も回数に含みます)。最高に達した人は自動席に入らず、最低がある人は月内のペースより遅れていると最優先で入ります。自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
+  <p class="help">「表示月の回数」で、その月の出社回数の最低・最高を人ごとに指定できます(固定曜日や指定日も回数に含みます)。最高に達した人は自動席に入らず、最低がある人は月内のペースより遅れていると最優先で入ります。自動席は、西川・島尾を除き、その日に席がなく休暇でもない人のうち、まずペアの相手がその日に座っている人、次に「その時点の出社率」が最も低い人を入れます。前の営業日に座った人は、他に候補がいれば後回しにして連続出社を避けます。席に入るとその人の出社率が上がるので順に別の人へ回り、月を追うごとに平均化します。同率の場合は上の並び順が優先です。</p>
   <p style="margin-top:8px"><button class="btn danger" id="reset">保存データをすべて消す</button></p>
 </div>
 
@@ -190,9 +190,11 @@ try{ const s=localStorage.getItem(KEY); if(s) state=Object.assign(state, JSON.pa
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 MEMBERS.forEach(m=>{ if(state.rates[m.id]==null) state.rates[m.id]=100; if(!state.leaves[m.id]) state.leaves[m.id]=[]; });
 // 初期データ: 10月実績+11月見込みの合計(%)を2か月(営業日40日)で割った値を12月の起点にする
-const PRESET={version:5, base:{month:'2026-12',days:40},
+const PRESET={version:8, base:{month:'2026-12',days:40},
   closed:['2026-12-30','2026-12-31'],
-  quota:{kadono:{'2026-12':{max:9}}, sekiguchi:{'2026-12':{min:5}}},
+  // 12月は回数をぴったり合わせ、連続出社を最小にした割り当てを1か月まとめて求めたもの
+  overrides:{"2026-12-02": {"2": "suda", "3": "baba", "4": "hirota"}, "2026-12-03": {"4": "kadono"}, "2026-12-04": {"3": "sekiguchi", "4": "suda"}, "2026-12-08": {"3": "suda", "4": "baba"}, "2026-12-09": {"4": "sekiguchi"}, "2026-12-10": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-15": {"3": "sekiguchi", "4": "suda"}, "2026-12-16": {"4": "baba"}, "2026-12-17": {"2": "sekiguchi", "3": "suda", "4": "kadono"}, "2026-12-22": {"3": "suda", "4": "hirota"}, "2026-12-23": {"4": "sekiguchi"}, "2026-12-24": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-28": {"3": "sekiguchi", "4": "suda"}},
+  quota:{kadono:{'2026-12':{min:9,max:9}}, sekiguchi:{'2026-12':{min:6,max:6}}, suda:{'2026-12':{min:9,max:9}}, baba:{'2026-12':{min:9,max:9}}, hirota:{'2026-12':{min:6,max:6}}},
   rates:{nishikawa:100, shimao:90.9, onoe:45.55, katayama:46.4, sekiguchi:50.95, suda:29.45, baba:31.35, kadono:33.95, hirota:38.5},
   specified:{
     onoe:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
@@ -203,6 +205,7 @@ MEMBERS.forEach(m=>{ if(!state.specified[m.id]) state.specified[m.id]=[]; });
 if(!state.closed) state.closed=[];
 if(!state.quota) state.quota={};
 if(state.presetVersion!==PRESET.version){
+  if(PRESET.overrides) Object.keys(PRESET.overrides).forEach(k=>{ state.overrides[k]=Object.assign({},PRESET.overrides[k]); });
   Object.keys(PRESET.quota).forEach(id=>{ state.quota[id]=Object.assign(state.quota[id]||{},PRESET.quota[id]); });
   state.base=Object.assign({},PRESET.base); Object.assign(state.rates,PRESET.rates);
   Object.keys(PRESET.specified).forEach(id=>{ state.specified[id]=PRESET.specified[id].slice(); });
@@ -290,9 +293,21 @@ function assignDay(d, rateOf, ctx){
     return n; };
   const capped=m=>q(m).max!=null&&cnt(m.id)+futureFixed(m)>=q(m).max;
   const behind=m=>q(m).min!=null&&cnt(m.id)<Math.ceil(q(m).min*ctx.dayNo/ctx.total);
+  // 残りの営業日で下限に届かなくなる人は必ず入れる
+  const urgent=m=>{ if(q(m).min==null) return false; const ff=futureFixed(m); const need=q(m).min-cnt(m.id)-ff;
+    // 今日を含む残り営業日のうち、本人の固定日・休暇でない日だけが追加できる日
+    let free=0; for(let t=new Date(d); ymd(t).slice(0,7)===mon; t.setDate(t.getDate()+1)){ if(!workday(t)) continue; const k=ymd(t); if(state.leaves[m.id].includes(k)) continue;
+      const hasSpec=state.specified[m.id].some(x=>x.startsWith(mon)); const fx=hasSpec?state.specified[m.id].includes(k):(state.fixed[m.id]||[]).includes(t.getDay()); if(k!==ymd(d)&&fx) continue; free++; }
+    return need>0&&need>=free; };
+  // 翌営業日に固定・指定で座る人
+  const nextFixed=m=>{ const t=new Date(d); do{ t.setDate(t.getDate()+1); }while(!workday(t)&&ymd(t).slice(0,7)===mon);
+    if(ymd(t).slice(0,7)!==mon) return false; const k=ymd(t); if(state.leaves[m.id].includes(k)) return false;
+    const hasSpec=state.specified[m.id].some(x=>x.startsWith(mon));
+    return hasSpec?state.specified[m.id].includes(k):(state.fixed[m.id]||[]).includes(t.getDay()); };
   const avail=m=>!used.has(m.id)&&!onLeave(m.id)&&!capped(m);
   const avoided=m=>(m.avoid||[]).some(a=>used.has(a));
-  const baseScore=m=>(avoided(m)?1:0)+(behind(m)?-1:0)+rateOf(m.id);
+  const prev=ctx.prev||new Set();
+  const baseScore=m=>(urgent(m)?-10:0)+(avoided(m)?1:0)+(behind(m)?-0.3:0)+(prev.has(m.id)||nextFixed(m)?0.5:0)+rateOf(m.id);
   const openSeats=()=>seats.filter(x=>!x.id);
   while(openSeats().length){
     const cands=[];
@@ -317,15 +332,16 @@ function simulate(untilDate){
   const D=Number(state.base.days)||20;
   const rateOf=id=>((state.rates[id]/100)*D+att[id])/(D+wdays);
   const days={}, start=baseStart();
-  let ctx=null, curMon='';
+  let ctx=null, curMon='', prevSet=new Set();
   for(let d=new Date(start); d<=untilDate; d.setDate(d.getDate()+1)){
     if(!workday(d)) continue;
     const mon=ymd(d).slice(0,7);
     if(mon!==curMon){ curMon=mon; ctx={count:{}, dayNo:0, total:workdaysInMonth(d.getFullYear(),d.getMonth())}; }
-    ctx.dayNo++;
+    ctx.dayNo++; ctx.prev=prevSet;
     const seats=assignDay(d, rateOf, ctx);
     days[ymd(d)]=seats;
     seats.forEach(s=>{ if(s.id){ att[s.id]++; ctx.count[s.id]=(ctx.count[s.id]||0)+1; } }); wdays++;
+    prevSet=new Set(seats.filter(x=>x.id).map(x=>x.id));
   }
   const rates={}; MEMBERS.forEach(m=>rates[m.id]=rateOf(m.id));
   return {days, rates, att, wdays};
@@ -336,7 +352,7 @@ function monthPlan(y,m){
   if(last<baseStart()){
     const days={}; const rateOf=id=>state.rates[id]/100;
     const ctx={count:{}, dayNo:0, total:workdaysInMonth(y,m)};
-    for(let d=new Date(first); d<=last; d.setDate(d.getDate()+1)) if(workday(d)){ ctx.dayNo++; const seats=assignDay(d, rateOf, ctx); days[ymd(d)]=seats; seats.forEach(s=>{ if(s.id) ctx.count[s.id]=(ctx.count[s.id]||0)+1; }); }
+    for(let d=new Date(first); d<=last; d.setDate(d.getDate()+1)) if(workday(d)){ ctx.dayNo++; const seats=assignDay(d, rateOf, ctx); days[ymd(d)]=seats; seats.forEach(s=>{ if(s.id) ctx.count[s.id]=(ctx.count[s.id]||0)+1; }); ctx.prev=new Set(seats.filter(x=>x.id).map(x=>x.id)); }
     const rates={}; MEMBERS.forEach(x=>rates[x.id]=rateOf(x.id));
     return {days, rates, startRates:rates, att:{}, wdays:0};
   }
