@@ -1,0 +1,55 @@
+name: nikkei225 prices
+
+# 日経225 構成銘柄の終値（約2年分）を Yahoo Finance から取得し、
+# nikkei225-momentum/data/closes.csv としてコミットする。
+# Claude の定期タスク「日経225 月次モメンタム リバランス」（毎月14日 19:07 JST）が
+# raw.githubusercontent.com からこの CSV を読む。Claude のクラウド環境からは
+# Yahoo Finance に直接つなげないことがあるため、取得だけをここに寄せている。
+# 手動実行: Actions → nikkei225 prices → Run workflow
+on:
+  schedule:
+    - cron: '23 8 * * 1-5'   # 平日 17:23 JST（東証の大引け後、定期タスクの約1時間半前）
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'nikkei225-momentum/fetch_prices.py'
+      - 'nikkei225-momentum/nikkei225_components.json'
+      - '.github/workflows/nikkei225-prices.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nikkei225-prices
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install yfinance / pandas
+        run: pip install --quiet yfinance pandas
+      - name: Fetch closes (Yahoo Finance, fallback stooq)
+        run: python nikkei225-momentum/fetch_prices.py --components nikkei225-momentum/nikkei225_components.json --out nikkei225-momentum/data
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nikkei225-momentum/data/closes.csv nikkei225-momentum/data/meta.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+            exit 0
+          fi
+          git commit -m "nikkei225: update prices $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+          # attack-map feed など他のワークフローのコミットと競合したら取り込んでから push（3回まで）
+          for i in 1 2 3; do
+            git push && break
+            echo "push に失敗（$i/3）。最新を取り込んで再試行します"
+            git pull --rebase origin main
+          done
