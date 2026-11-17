@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// PWA: 本番ビルドのみサービスワーカーを登録し、オフラインでも起動できるようにする
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      /* 登録に失敗してもオンラインなら普通に遊べる */
+    })
+  })
+}

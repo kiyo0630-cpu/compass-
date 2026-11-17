@@ -24,6 +24,7 @@ body,
 }
 
 body {
+  overflow: hidden; /* 画面シェイク中にスクロール領域が生まれないようにする */
   background: #07040a;
   color: #efe6d6;
   font-family: var(--font-sans-jp);
@@ -132,3 +133,29 @@ body {
 
 .safe-top { padding-top: env(safe-area-inset-top, 0px); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ---------- CPU の表情 ---------- */
+@keyframes cpu-tremble {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-0.8px, 0.6px) rotate(-0.8deg); }
+  40% { transform: translate(0.9px, -0.5px) rotate(0.7deg); }
+  60% { transform: translate(-0.6px, -0.7px) rotate(-0.5deg); }
+  80% { transform: translate(0.7px, 0.6px) rotate(0.6deg); }
+}
+.cpu-tremble { animation: cpu-tremble 0.16s linear infinite; }
+
+@keyframes cpu-sweat {
+  0% { transform: translateY(-2px); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(9px); opacity: 0; }
+}
+.cpu-sweat { animation: cpu-sweat 1.3s ease-in infinite; }
+.cpu-sweat-2 { animation-delay: 0.6s; }
+
+@keyframes cpu-dot {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+.cpu-dot { animation: cpu-dot 1s ease-in-out infinite; }
+.cpu-dot-2 { animation-delay: 0.2s; }
+.cpu-dot-3 { animation-delay: 0.4s; }
