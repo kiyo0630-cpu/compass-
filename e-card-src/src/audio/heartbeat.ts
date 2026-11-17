@@ -10,6 +10,8 @@ export class HeartbeatEngine {
   private muted = false
   private nextBeatTime = 0
   private timer: number | null = null
+  /** 鼓動が鳴る瞬間に呼ばれる（振動連動用） */
+  onBeat: (() => void) | null = null
 
   /** ユーザー操作のタイミングで AudioContext を確実に生成・再開する */
   async unlock(): Promise<void> {
@@ -81,6 +83,10 @@ export class HeartbeatEngine {
     const lookahead = 0.25
     while (this.nextBeatTime < this.ctx.currentTime + lookahead) {
       this.playHeartbeat(this.nextBeatTime)
+      const wait = Math.max(0, (this.nextBeatTime - this.ctx.currentTime) * 1000)
+      window.setTimeout(() => {
+        if (this.running) this.onBeat?.()
+      }, wait)
       this.nextBeatTime += 60 / this.bpm
     }
     this.timer = window.setTimeout(this.schedule, 60)
@@ -176,6 +182,63 @@ export class HeartbeatEngine {
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25)
     src.connect(bp).connect(g).connect(this.master)
     src.start(t)
+  }
+
+  /** 王様 vs 奴隷の激突：稲妻と雷鳴 */
+  playThunder() {
+    const ctx = this.ctx
+    if (!ctx || !this.master) return
+    const t = ctx.currentTime
+    // 鋭い破裂音
+    const len = Math.floor(ctx.sampleRate * 1.4)
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < len; i++) {
+      const env = Math.pow(1 - i / len, 2.2)
+      d[i] = (Math.random() * 2 - 1) * env
+    }
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(5200, t)
+    lp.frequency.exponentialRampToValueAtTime(180, t + 1.2)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.7, t + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4)
+    src.connect(lp).connect(g).connect(this.master)
+    src.start(t)
+    // 腹に響く低音
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(90, t)
+    osc.frequency.exponentialRampToValueAtTime(32, t + 0.9)
+    const og = ctx.createGain()
+    og.gain.setValueAtTime(0.0001, t)
+    og.gain.exponentialRampToValueAtTime(0.8, t + 0.02)
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 1.1)
+    osc.connect(og).connect(this.master)
+    osc.start(t)
+    osc.stop(t + 1.2)
+  }
+
+  /** 決着の一撃（王様 vs 市民、市民 vs 奴隷）：重い打撃音 */
+  playThud() {
+    const ctx = this.ctx
+    if (!ctx || !this.master) return
+    const t = ctx.currentTime
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(120, t)
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.25)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.6, t + 0.01)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4)
+    osc.connect(g).connect(this.master)
+    osc.start(t)
+    osc.stop(t + 0.45)
   }
 
   /** 勝利：黄金の鐘 */

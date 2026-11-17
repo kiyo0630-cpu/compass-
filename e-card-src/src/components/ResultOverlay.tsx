@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useIsPresent } from 'framer-motion'
 import type { CardType, Outcome } from '../game/types'
 import { CARD_LABEL } from '../game/logic'
 import { Card } from './Card'
@@ -13,6 +13,8 @@ interface Props {
   setNo: number
   playerWins: number
   cpuWins: number
+  /** このセットで勝者が得たポイント（奴隷ボーナスなら 2） */
+  points: number
   matchDecided: boolean
   onNext: () => void
 }
@@ -36,16 +38,21 @@ export function ResultOverlay({
   setNo,
   playerWins,
   cpuWins,
+  points,
   matchDecided,
   onNext,
 }: Props) {
   const t = TITLE[outcome]
+  // 閉じるアニメーション中は操作を遮らない（次のターンの手札をすぐ触れるように）
+  const isPresent = useIsPresent()
   const isSetDraw = kind === 'set' && outcome === 'draw'
   const nextLabel = matchDecided ? '最終結果を見る' : kind === 'turn' ? '次のターンへ' : '次のセットへ（陣営交代）'
 
   return (
     <motion.div
-      className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 px-5 backdrop-blur-sm"
+      className={`absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 px-5 backdrop-blur-sm ${
+        isPresent ? '' : 'pointer-events-none'
+      }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -90,6 +97,20 @@ export function ResultOverlay({
           </h2>
         </div>
         <p className="mt-1 text-xs tracking-[0.3em] text-white/50">{isSetDraw ? 'SET DRAW ─ 5ターン決着なし' : t.sub}</p>
+        {kind === 'set' && points >= 2 && (
+          <motion.p
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: [0.4, 1.25, 1], opacity: 1 }}
+            transition={{ delay: 0.45, duration: 0.5 }}
+            className={`mt-2 rounded-full border px-4 py-1 text-sm font-black tracking-wider ${
+              outcome === 'win'
+                ? 'border-gold bg-gold/15 text-gold-light shadow-[0_0_18px_rgba(227,183,78,0.6)]'
+                : 'border-blood bg-blood/20 text-red-200 shadow-[0_0_18px_rgba(155,28,46,0.6)]'
+            }`}
+          >
+            {outcome === 'win' ? '奴隷が王を討った！ 一気に +2' : '奴隷に王を討たれた… CPU +2'}
+          </motion.p>
+        )}
 
         {/* お互いのカード */}
         <div className="mt-5 flex w-full items-end justify-center gap-5">

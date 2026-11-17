@@ -1,19 +1,19 @@
 import { motion } from 'framer-motion'
 import { RotateCcw } from 'lucide-react'
-import type { Outcome } from '../game/types'
+import type { SetRecord } from '../game/types'
+import { score } from '../game/logic'
 import { TreasureArt, DungeonArt } from '../art/Endings'
 import { AngelIcon, DemonIcon } from '../art/Icons'
 
 interface Props {
   playerWon: boolean
-  history: Outcome[]
+  history: SetRecord[]
   onRestart: () => void
 }
 
 /** 5 勝到達時の MATCH OVER 画面 */
 export function MatchOverlay({ playerWon, history, onRestart }: Props) {
-  const playerWins = history.filter((h) => h === 'win').length
-  const cpuWins = history.filter((h) => h === 'lose').length
+  const { player: playerWins, cpu: cpuWins } = score(history)
 
   return (
     <motion.div
@@ -46,7 +46,9 @@ export function MatchOverlay({ playerWon, history, onRestart }: Props) {
         />
       )}
 
-      <div className="safe-top safe-bottom relative flex h-full flex-col items-center justify-between px-5 py-8">
+      <div className="safe-top safe-bottom relative h-full">
+      {/* safe-area の余白は外側、画面内の余白は内側で持つ（同じ要素に置くと上書きし合う） */}
+      <div className="flex h-full flex-col items-center justify-between px-5 py-8">
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -94,6 +96,7 @@ export function MatchOverlay({ playerWon, history, onRestart }: Props) {
             もう一度挑む
           </motion.button>
         </motion.div>
+      </div>
       </div>
     </motion.div>
   )
