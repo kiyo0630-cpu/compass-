@@ -149,8 +149,8 @@ const MEMBERS = [
   {id:'sekiguchi', name:'関口', fixed:[]},
   {id:'suda',      name:'須田', fixed:[]},
   {id:'baba',      name:'馬場', fixed:[]},
-  {id:'kadono',    name:'門野', fixed:[2]},
-  {id:'hirota',    name:'廣田', fixed:[5]},
+  {id:'kadono',    name:'門野', fixed:[]},
+  {id:'hirota',    name:'廣田', fixed:[]},
 ];
 const WDN={1:'月',2:'火',3:'水',4:'木',5:'金'};
 const memberById=id=>MEMBERS.find(m=>m.id===id);
@@ -190,12 +190,12 @@ try{ const s=localStorage.getItem(KEY); if(s) state=Object.assign(state, JSON.pa
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 MEMBERS.forEach(m=>{ if(state.rates[m.id]==null) state.rates[m.id]=100; if(!state.leaves[m.id]) state.leaves[m.id]=[]; });
 // 初期データ: 10月実績+11月見込みの合計(%)を2か月(営業日40日)で割った値を12月の起点にする
-const PRESET={version:9, base:{month:'2026-12',days:40},
+const PRESET={version:10, base:{month:'2026-12',days:40},
   closed:['2026-12-30','2026-12-31'],
   // 12月は回数をぴったり合わせ、連続出社を最小にした割り当てを1か月まとめて求めたもの
-  overrides:{"2026-12-02": {"2": "sekiguchi", "3": "suda", "4": "baba"}, "2026-12-03": {"4": "kadono"}, "2026-12-04": {"3": "suda", "4": "baba"}, "2026-12-07": {"4": "sekiguchi"}, "2026-12-08": {"3": "suda", "4": "baba"}, "2026-12-09": {"4": "hirota"}, "2026-12-10": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-14": {"4": "baba"}, "2026-12-15": {"3": "suda", "4": "hirota"}, "2026-12-16": {"4": "sekiguchi"}, "2026-12-17": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-21": {"4": "sekiguchi"}, "2026-12-22": {"3": "suda", "4": "baba"}, "2026-12-23": {"4": "sekiguchi"}, "2026-12-24": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-28": {"2": "sekiguchi", "3": "suda", "4": "baba"}},
-  quota:{kadono:{'2026-12':{min:9,max:9}}, sekiguchi:{'2026-12':{min:6,max:6}}, suda:{'2026-12':{min:9,max:9}}, baba:{'2026-12':{min:9,max:9}}, hirota:{'2026-12':{min:6,max:6}}},
-  rates:{nishikawa:100, shimao:90.9, onoe:45.55, katayama:46.4, sekiguchi:50.95, suda:29.45, baba:31.35, kadono:33.95, hirota:38.5},
+  overrides:{"2026-12-01": {"4": "baba"}, "2026-12-02": {"2": "suda", "3": "kadono", "4": "hirota"}, "2026-12-03": {"4": "sekiguchi"}, "2026-12-04": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-07": {"4": "hirota"}, "2026-12-08": {"2": "sekiguchi", "3": "suda", "4": "kadono"}, "2026-12-09": {"4": "baba"}, "2026-12-10": {"2": "suda", "3": "kadono", "4": "hirota"}, "2026-12-11": {"4": "sekiguchi"}, "2026-12-14": {"4": "baba"}, "2026-12-15": {"2": "suda", "3": "kadono", "4": "hirota"}, "2026-12-16": {"4": "sekiguchi"}, "2026-12-17": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-18": {"4": "hirota"}, "2026-12-21": {"4": "baba"}, "2026-12-22": {"2": "sekiguchi", "3": "suda", "4": "kadono"}, "2026-12-23": {"4": "hirota"}, "2026-12-24": {"2": "suda", "3": "baba", "4": "kadono"}, "2026-12-25": {"4": "sekiguchi"}, "2026-12-28": {"2": "suda", "3": "baba", "4": "hirota"}, "2026-12-29": {"4": "kadono"}},
+  quota:{kadono:{'2026-12':{min:9,max:9}}, sekiguchi:{'2026-12':{min:6,max:6}}, suda:{'2026-12':{min:9,max:9}}, baba:{'2026-12':{min:8,max:8}}, hirota:{'2026-12':{min:7,max:7}}},
+  rates:{nishikawa:100, shimao:88.3, onoe:49.05, katayama:49.05, sekiguchi:53.6, suda:29.45, baba:36.6, kadono:33.95, hirota:38.5},
   specified:{
     onoe:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
     katayama:['2026-12-01','2026-12-03','2026-12-07','2026-12-09','2026-12-11','2026-12-14','2026-12-16','2026-12-18','2026-12-21','2026-12-23','2026-12-25','2026-12-29'],
@@ -213,7 +213,7 @@ if(state.presetVersion!==PRESET.version){
   PRESET.closed.forEach(k=>{ if(!state.closed.includes(k)) state.closed.push(k); });
   state.presetVersion=PRESET.version; save();
 }
-const FIXED_VERSION=6; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
+const FIXED_VERSION=7; // 既定の固定曜日を変えたら上げる(保存済みの固定曜日を既定に戻す)
 if(!state.fixed||state.fixedVersion!==FIXED_VERSION){ state.fixed={}; state.fixedVersion=FIXED_VERSION; }
 MEMBERS.forEach(m=>{ if(!m.daily&&!state.fixed[m.id]) state.fixed[m.id]=(m.fixed||[]).slice(); });
 if(!state.base) state.base={};
