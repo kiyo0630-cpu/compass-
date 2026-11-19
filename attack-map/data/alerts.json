@@ -1,27 +1,27 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-18T21:57:42.494Z",
- "snapshotGeneratedAt": "2026-11-18T21:57:42.192Z",
+ "generatedAt": "2026-11-19T03:29:38.973Z",
+ "snapshotGeneratedAt": "2026-11-19T03:29:38.727Z",
  "target": "JP",
  "dateRange": "1d",
  "status": "info",
  "baseline": {
-  "samples": 24,
+  "samples": 23,
   "days": 7,
-  "from": "2026-11-11T21:59:17.673Z",
-  "to": "2026-11-18T13:59:38.878Z",
+  "from": "2026-11-12T11:13:58.517Z",
+  "to": "2026-11-18T21:57:42.192Z",
   "sufficient": true
  },
  "alerts": [
   {
-   "id": "l3-single-source:HK:2026-11-18",
+   "id": "l3-single-source:HK:2026-11-19",
    "severity": "info",
    "kind": "l3-single-source",
    "key": "HK",
    "title": "L3 送信元が Hong Kong にほぼ集中",
    "detail": "97.7%",
    "value": 97.7,
-   "baseline": 26.7
+   "baseline": 32.1
   }
  ]
 }
