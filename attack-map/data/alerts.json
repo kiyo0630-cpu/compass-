@@ -1,15 +1,15 @@
 {
  "schema": 1,
- "generatedAt": "2026-11-21T02:16:45.797Z",
- "snapshotGeneratedAt": "2026-11-21T02:16:45.565Z",
+ "generatedAt": "2026-11-21T09:56:58.714Z",
+ "snapshotGeneratedAt": "2026-11-21T09:56:58.555Z",
  "target": "JP",
  "dateRange": "1d",
  "status": "ok",
  "baseline": {
   "samples": 23,
   "days": 7,
-  "from": "2026-11-14T03:17:21.580Z",
-  "to": "2026-11-20T21:05:59.171Z",
+  "from": "2026-11-14T11:28:52.188Z",
+  "to": "2026-11-21T02:16:45.565Z",
   "sufficient": true
  },
  "alerts": []
